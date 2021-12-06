@@ -1,21 +1,33 @@
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import org.apache.spark.SparkConf
 import org.apache.spark.api.java.JavaFutureAction
 import org.apache.spark.api.java.JavaSparkContext
 import scala.Tuple2
+import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
-    // The connection to Spark is initiated.
+    if (args.isEmpty()) exitProcess(0)
+
     val spark = SparkConf()
         .setAppName("DSPSO")
-        .setMaster("local[*]")
         .set("spark.scheduler.mode", "FAIR") // We allow multiple jobs to be executed in a round robin fashion.
         .set("spark.driver.bindAddress", "127.0.0.1")
+
     val sc = JavaSparkContext(spark)
 
+    val executeSync = args[0] == "sync"
     val begin = System.currentTimeMillis()
-    synchronousPSO(sc)
+    if (executeSync) {
+        println("Starting SYNCHRONOUS PSO...")
+        synchronousPSO(sc)
+    } else {
+        println("Starting ASYNCHRONOUS PSO...")
+        asynchronousPSO(sc)
+    }
     val end = System.currentTimeMillis()
 
     println("Elapsed time in milliseconds: ${end - begin}")

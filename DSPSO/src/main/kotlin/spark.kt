@@ -3,9 +3,6 @@ import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.util.AccumulatorV2
 import scala.Tuple2
 
-// TODO: https://github.com/nohkwangsun/spark-using-kotlin/blob/master/gradle-project/src/main/kotlin/rdd/K010_Accumulators2.kt
-// TODO: https://spark.apache.org/docs/latest/rdd-programming-guide.html
-
 class PositionAccumulator(
     private val position: MutablePosition<Double>,
     private val resettable: Boolean = true
@@ -50,7 +47,8 @@ class FitnessEvaluation(
 
         // The personal best position is saved.
         if (particle.bestPersonalError == null
-            || (particle.bestPersonalError != null && particle.bestPersonalError!! > particle.error!!)) {
+            || (particle.bestPersonalError != null && particle.bestPersonalError!! > particle.error!!)
+        ) {
             particle.bestPersonalPosition = particle.position.toMutableList()
             particle.bestPersonalError = particle.error
         }
@@ -71,7 +69,8 @@ class AsyncFitnessEvaluation(
 
         // The personal best position is saved.
         if (particle.bestPersonalError == null
-            || (particle.bestPersonalError != null && particle.bestPersonalError!! > particle.error!!)) {
+            || (particle.bestPersonalError != null && particle.bestPersonalError!! > particle.error!!)
+        ) {
             particle.bestPersonalPosition = particle.position.toMutableList()
             particle.bestPersonalError = particle.error
         }
