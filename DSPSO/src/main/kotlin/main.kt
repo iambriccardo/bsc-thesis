@@ -15,7 +15,8 @@ fun main(args: Array<String>) {
     val spark = SparkConf()
         .setAppName("DSPSO")
         .set("spark.scheduler.mode", "FAIR") // We allow multiple jobs to be executed in a round robin fashion.
-        .set("spark.driver.bindAddress", "127.0.0.1")
+        .set("spark.kubernetes.driver.annotation.sidecar.istio.io/inject", "false")
+        .set("spark.kubernetes.executor.annotation.sidecar.istio.io/inject", "false")
 
     val sc = JavaSparkContext(spark)
 

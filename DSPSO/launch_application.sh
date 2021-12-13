@@ -1,0 +1,1 @@
+kubectl apply -f kubernetes/dpso.yaml --namespace=spark-jobs
