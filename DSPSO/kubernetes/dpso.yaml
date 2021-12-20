@@ -13,7 +13,7 @@ spec:
   arguments:
     - "sync"
     - "10"
-    - "10"
+    - "5"
     - "2"
   sparkVersion: "3.1.1"
   restartPolicy:
@@ -27,7 +27,7 @@ spec:
     serviceAccount: spark
   executor:
     cores: 1
-    instances: 1
+    instances: 2
     memory: "512m"
     labels:
       version: 3.1.1
