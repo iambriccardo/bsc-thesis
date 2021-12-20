@@ -88,7 +88,7 @@ interface FitnessFunction<I, O> : Serializable {
                 result += it * it
             }
 
-            Thread.sleep(1000)
+            Thread.sleep(10000)
 
             return result
         }

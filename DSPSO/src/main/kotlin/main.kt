@@ -7,12 +7,13 @@ import org.apache.spark.SparkConf
 import org.apache.spark.api.java.JavaFutureAction
 import org.apache.spark.api.java.JavaSparkContext
 import scala.Tuple2
-import kotlin.system.exitProcess
+import kotlin.system.measureTimeMillis
 
 fun main(args: Array<String>) {
-    if (args.isEmpty()) exitProcess(0)
+    val config = args.asConfiguration()
 
     val spark = SparkConf()
+        .setMaster("local[*]")
         .setAppName("DSPSO")
         .set("spark.scheduler.mode", "FAIR") // We allow multiple jobs to be executed in a round robin fashion.
         .set("spark.kubernetes.driver.annotation.sidecar.istio.io/inject", "false")
@@ -20,34 +21,35 @@ fun main(args: Array<String>) {
 
     val sc = JavaSparkContext(spark)
 
-    val executeSync = args[0] == "sync"
-    val begin = System.currentTimeMillis()
-    if (executeSync) {
-        println("Starting SYNCHRONOUS PSO...")
-        synchronousPSO(sc)
-    } else {
-        println("Starting ASYNCHRONOUS PSO...")
-        asynchronousPSO(sc)
+    val time = measureTimeMillis {
+        if (config.isSynchronous) {
+            println("Starting SYNCHRONOUS PSO...")
+            synchronousPSO(config, sc)
+        } else {
+            println("Starting ASYNCHRONOUS PSO...")
+            asynchronousPSO(config, sc)
+        }
     }
-    val end = System.currentTimeMillis()
-
-    println("Elapsed time in milliseconds: ${end - begin}")
+    println("Elapsed time minutes: ${time / 1000.0 / 60.0}")
+    println("Elapsed time seconds: ${time / 1000.0}")
+    println("Elapsed time milliseconds: $time")
 }
 
-fun synchronousPSO(sc: JavaSparkContext) {
+fun synchronousPSO(config: Configuration, sc: JavaSparkContext) {
     // The global position accumulator is registered.
     val globalBestPositionAccumulator = PositionAccumulator(MutablePosition.BestPosition())
     sc.sc().register(globalBestPositionAccumulator, "GlobalBestAccumulator")
 
-    val iterations = 10
     var isFirstRound = true
     var inputParticles: List<Particle>
     var movedParticles: List<Particle> = emptyList()
     var bestPosition: Tuple2<Position<Double>?, Double?>? = null
 
-    repeat((0 until iterations).count()) {
+    repeat((0 until config.iterations).count()) {
         println("Iteration $it started")
-        inputParticles = if (isFirstRound) randomParticlesOfDouble(50, 2) else movedParticles
+        inputParticles = if (isFirstRound)
+            randomParticlesOfDouble(config.particles, config.dimensionality)
+        else movedParticles
 
         // The particles are evaluated and the best positions are computed.
         val evaluatedParticles = sc
@@ -67,7 +69,7 @@ fun synchronousPSO(sc: JavaSparkContext) {
             .collect()
 
         bestPosition = bestGlobalPositionBroadcast.value
-        println("Best global so far: ${bestGlobalPositionBroadcast.value}")
+        println("Best global until now: ${bestGlobalPositionBroadcast.value}")
 
         isFirstRound = false
         println("Iteration $it ended")
@@ -76,22 +78,23 @@ fun synchronousPSO(sc: JavaSparkContext) {
     println("Best position: ${bestPosition!!._1} ${bestPosition!!._2}")
 }
 
-fun asynchronousPSO(sc: JavaSparkContext) = runBlocking {
-    val numberOfParticles = 50
-    val numberOfIterations = 10
-    val numberOfEvaluations = numberOfParticles * numberOfIterations
-    val particles = randomParticlesOfDouble(numberOfParticles, 2)
+fun asynchronousPSO(config: Configuration, sc: JavaSparkContext) = runBlocking {
+    // The random particles are initialized.
+    val particles = randomParticlesOfDouble(config.particles, config.dimensionality)
 
-    val particlesChannel = Channel<Particle>(capacity = Channel.UNLIMITED).apply { particles.forEach { send(it) } }
+    // Channel containing the particles that need to be sent for evaluation.
+    val particlesChannel = Channel<Particle>(capacity = Channel.UNLIMITED)
+        .apply { particles.forEach { send(it) } }
+    // Channel containing the futures connected to the particles remote evaluation.
     val futuresChannel = Channel<JavaFutureAction<List<Particle>>>(capacity = Channel.UNLIMITED)
 
+    // Shared state actor which simplifies shared state among coroutines.
     val stateActor = stateActor()
 
     val producer = launch {
         for (particle in particlesChannel) {
             // We send the computation to the cluster.
             val future = sc.parallelize(listOf(particle))
-                .repartition(1)
                 .map(AsyncFitnessEvaluation(FitnessFunction.Sphere()))
                 .collectAsync()
 
@@ -102,12 +105,13 @@ fun asynchronousPSO(sc: JavaSparkContext) = runBlocking {
     }
 
     val consumer = launch {
-        repeat(numberOfEvaluations) {
+        repeat(config.iterations * config.particles) {
             val future = futuresChannel.receive()
 
             val particle = withContext(Dispatchers.IO) {
                 future.get().first()
             }
+            println("Received evaluated particle at $it")
 
             // We increment the number of evaluated particles.
             stateActor.mutate { state ->
@@ -121,9 +125,7 @@ fun asynchronousPSO(sc: JavaSparkContext) = runBlocking {
 
             // We get a snapshot of the state.
             val state = stateActor.snapshot()
-
-            println(state.bestGlobalPosition.position())
-            println(state.bestGlobalPosition.error())
+            println("Best global until now: ${state.bestGlobalPosition.position()} ${state.bestGlobalPosition.error()}")
 
             // We update the particle's position and velocity.
             particle.updateVelocity(state.bestGlobalPosition.position())
@@ -134,14 +136,26 @@ fun asynchronousPSO(sc: JavaSparkContext) = runBlocking {
             particlesChannel.send(particle)
         }
 
-        // We cancel the particles channel.
-        particlesChannel.cancel()
-
         // We perform the cleanup of the futures after the specific number of iterations is reached.
+        // Due to the async behavior of this code it may happen that some futures finish while we are
+        // deleting the preceding ones.
+        // e.g.
+        // future_1, future_2, future_3
+        // We can future_1 and future_2 while also future_3 is running, if it takes a small amount of time
+        // it will be finished before we cancel it. For our use case this is not a big deal, because the computation
+        // will be simply lost and nothing more.
+        println("Cleaning up remaining jobs...")
         while (!futuresChannel.isEmpty) {
             val future = futuresChannel.receive()
             future.cancel(true)
         }
+        println("Remaining jobs cleaned up")
+
+        // We cancel the futures channel.
+        futuresChannel.cancel()
+
+        // We cancel the particles channel.
+        particlesChannel.cancel()
     }
 
     producer.join()
