@@ -1,5 +1,9 @@
 **/.idea
 **/out
+**/output
 **/target
+**/.classpath
+**/.project
+**/bin
 **/libs
 *.iml

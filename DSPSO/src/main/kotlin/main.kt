@@ -7,12 +7,14 @@ import org.apache.spark.SparkConf
 import org.apache.spark.api.java.JavaFutureAction
 import org.apache.spark.api.java.JavaSparkContext
 import scala.Tuple2
+import java.io.File
 import kotlin.system.measureTimeMillis
 
 fun main(args: Array<String>) {
     val config = args.asConfiguration()
 
     val spark = SparkConf()
+        //.setMaster("local[*]")
         .setAppName("DSPSO")
         .set("spark.scheduler.mode", "FAIR") // We allow multiple jobs to be executed in a round robin fashion.
         .set("spark.kubernetes.driver.annotation.sidecar.istio.io/inject", "false")
@@ -75,6 +77,12 @@ fun synchronousPSO(config: Configuration, sc: JavaSparkContext) {
     }
 
     println("Best position: ${bestPosition!!._1} ${bestPosition!!._2}")
+
+    println("Writing result to ${config.outputPath}...")
+    val output = File(config.outputPath)
+    output.createNewFile()
+    output.writeText("Best position: ${bestPosition!!._1} ${bestPosition!!._2}")
+    println("Results written to ${config.outputPath}")
 }
 
 fun asynchronousPSO(config: Configuration, sc: JavaSparkContext) = runBlocking {
@@ -162,6 +170,12 @@ fun asynchronousPSO(config: Configuration, sc: JavaSparkContext) = runBlocking {
 
     val state = stateActor.snapshot()
     println("Best position: ${state.bestGlobalPosition.position()} ${state.bestGlobalPosition.error()}")
+
+    println("Writing result to ${config.outputPath}...")
+    val output = File(config.outputPath)
+    output.createNewFile()
+    output.writeText("Best position: ${state.bestGlobalPosition.position()} ${state.bestGlobalPosition.error()}")
+    println("Results written to ${config.outputPath}")
 
     // We close the state actor in order to let the block finish.
     stateActor.close()

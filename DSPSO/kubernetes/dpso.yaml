@@ -15,13 +15,21 @@ spec:
     - "10"
     - "5"
     - "2"
+    - "/opt/spark/work-dir/best-position.txt"
   sparkVersion: "3.1.1"
   restartPolicy:
     type: Never
+  volumes:
+    - name: spark-data
+      persistentVolumeClaim:
+        claimName: local-pvc
   driver:
     cores: 1
     coreLimit: "1200m"
     memory: "512m"
+    volumeMounts:
+      - name: spark-data
+        mountPath: /opt/spark/work-dir
     labels:
       version: 3.1.1
     serviceAccount: spark
