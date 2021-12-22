@@ -8,14 +8,14 @@ replicaCount: 1
 
 image:
   # -- Image repository
-  repository: gcr.io/spark-operator/spark-operator
+  repository: riccardobusetti/spark-operator
   # -- Image pull policy
   pullPolicy: IfNotPresent
   # -- if set, override the image tag whose default is the chart appVersion.
-  tag: "latest"
+  tag: "v1.0"
 
 # -- Image pull secrets
-imagePullSecrets: []
+imagePullSecrets: [ ]
 
 # -- String to partially override `spark-operator.fullname` template (will maintain the release name)
 nameOverride: ""
@@ -38,14 +38,14 @@ serviceAccounts:
     # -- Optional name for the spark service account
     name: "spark"
     # -- Optional annotations for the spark service account
-    annotations: {}
+    annotations: { }
   sparkoperator:
     # -- Create a service account for the operator
     create: true
     # -- Optional name for the operator service account
     name: ""
     # -- Optional annotations for the operator service account
-    annotations: {}
+    annotations: { }
 
 # -- Set this if running spark jobs in a different namespace than the operator
 sparkJobNamespace: "spark-jobs"
@@ -69,10 +69,10 @@ ingressUrlFormat: "{{$appName}}.ingress.cluster.com"
 logLevel: 2
 
 # podSecurityContext -- Pod security context
-podSecurityContext: {}
+podSecurityContext: { }
 
 # securityContext -- Operator container security context
-securityContext: {}
+securityContext: { }
 
 webhook:
   # -- Enable webhook server
@@ -90,7 +90,7 @@ webhook:
   cleanupAnnotations:
     "helm.sh/hook": pre-delete, pre-upgrade
     "helm.sh/hook-delete-policy": hook-succeeded
-    # -- Webhook Timeout in seconds
+  # -- Webhook Timeout in seconds
   timeout: 30
 
 metrics:
@@ -110,7 +110,7 @@ podMonitor:
   # -- If enabled, a pod monitor for operator's pod will be submitted. Note that prometheus metrics should be enabled as well.
   enable: false
   # -- Pod monitor labels
-  labels: {}
+  labels: { }
   # -- The label to use to retrieve the job name from
   jobLabel: spark-operator-podmonitor
   # -- Prometheus metrics endpoint properties. `metrics.portName` will be used as a port
@@ -119,32 +119,32 @@ podMonitor:
     interval: 5s
 
 # nodeSelector -- Node labels for pod assignment
-nodeSelector: {}
+nodeSelector: { }
 
 # tolerations -- List of node taints to tolerate
-tolerations: []
+tolerations: [ ]
 
 # affinity -- Affinity for pod assignment
-affinity: {}
+affinity: { }
 
 # podAnnotations -- Additional annotations to add to the pod
-podAnnotations: {}
+podAnnotations: { }
 
 # podLabels -- Additional labels to add to the pod
-podLabels: {}
+podLabels: { }
 
 # resources -- Pod resource requests and limits
 # Note, that each job submission will spawn a JVM within the Spark Operator Pod using "/usr/local/openjdk-11/bin/java -Xmx128m".
 # Kubernetes may kill these Java processes at will to enforce resource limits. When that happens, you will see the following error:
 # 'failed to run spark-submit for SparkApplication [...]: signal: killed' - when this happens, you may want to increase memory limits.
 resources:
-  {}
+  { }
   # limits:
   #   cpu: 100m
   #   memory: 300Mi
   # requests:
   #   cpu: 100m
-  #   memory: 300Mi
+#   memory: 300Mi
 
 batchScheduler:
   # -- Enable batch scheduler for spark jobs scheduling. If enabled, users can specify batch scheduler name in spark application

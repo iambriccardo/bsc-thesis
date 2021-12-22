@@ -11,7 +11,7 @@ cp -R target/$FAT_JAR_BASE_NAME $SPARK_HOME/jars/
 mv $SPARK_HOME/jars/$FAT_JAR_BASE_NAME $SPARK_HOME/jars/$FAT_JAR_FINAL_NAME
 
 # Building image.
-$SPARK_HOME/bin/docker-image-tool.sh -r riccardobusetti -t 1.0 build
+$SPARK_HOME/bin/docker-image-tool.sh -r riccardobusetti -t v1.0 build
 
 # Pushing image.
-$SPARK_HOME/bin/docker-image-tool.sh -r riccardobusetti -t 1.0 push
+$SPARK_HOME/bin/docker-image-tool.sh -r riccardobusetti -t v1.0 push

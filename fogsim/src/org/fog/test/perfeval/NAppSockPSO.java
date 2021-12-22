@@ -189,7 +189,6 @@ public class NAppSockPSO {
 						moduleMapping[currentApp] = ModuleMapping.createModuleMapping();
 						modulePlacement = new ModulePlacementPSO(fogDevices, sensors, actuators, application[currentApp], moduleMapping[currentApp],subAppsRate,FileNameResults,countErrors);
 					//}
-
 				}
 
 				//this.timeUsed = difference;

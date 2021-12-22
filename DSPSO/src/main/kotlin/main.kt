@@ -34,6 +34,13 @@ fun main(args: Array<String>) {
     println("Elapsed time minutes: ${time / 1000.0 / 60.0}")
     println("Elapsed time seconds: ${time / 1000.0}")
     println("Elapsed time milliseconds: $time")
+
+    if (config.keepAlive) {
+        println("Keeping alive the JVM...")
+        while (true) {
+
+        }
+    }
 }
 
 fun synchronousPSO(config: Configuration, sc: JavaSparkContext) {
@@ -78,11 +85,9 @@ fun synchronousPSO(config: Configuration, sc: JavaSparkContext) {
 
     println("Best position: ${bestPosition!!._1} ${bestPosition!!._2}")
 
-    println("Writing result to ${config.outputPath}...")
-    val output = File(config.outputPath)
-    output.createNewFile()
-    output.writeText("Best position: ${bestPosition!!._1} ${bestPosition!!._2}")
-    println("Results written to ${config.outputPath}")
+    runBlocking {
+        writeFile(config, bestPosition!!._1!!, bestPosition!!._2!!)
+    }
 }
 
 fun asynchronousPSO(config: Configuration, sc: JavaSparkContext) = runBlocking {
@@ -171,12 +176,19 @@ fun asynchronousPSO(config: Configuration, sc: JavaSparkContext) = runBlocking {
     val state = stateActor.snapshot()
     println("Best position: ${state.bestGlobalPosition.position()} ${state.bestGlobalPosition.error()}")
 
-    println("Writing result to ${config.outputPath}...")
-    val output = File(config.outputPath)
-    output.createNewFile()
-    output.writeText("Best position: ${state.bestGlobalPosition.position()} ${state.bestGlobalPosition.error()}")
-    println("Results written to ${config.outputPath}")
+    writeFile(config, state.bestGlobalPosition.position()!!, state.bestGlobalPosition.error()!!)
 
     // We close the state actor in order to let the block finish.
     stateActor.close()
+}
+
+suspend fun writeFile(config: Configuration, position: Position<Double>, error: Double) = withContext(Dispatchers.IO) {
+    println("Writing result to ${config.outputPath}...")
+
+    val output = File(config.outputPath)
+    output.parentFile.mkdirs()
+    output.createNewFile()
+    output.writeText("Best position: $position $error")
+
+    println("Results written to ${config.outputPath}")
 }

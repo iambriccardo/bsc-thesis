@@ -6,16 +6,17 @@ metadata:
 spec:
   type: Scala
   mode: cluster
-  image: "riccardobusetti/spark:1.0"
-  imagePullPolicy: Always
+  image: "riccardobusetti/spark:v1.0"
+  imagePullPolicy: IfNotPresent
   mainClass: MainKt
   mainApplicationFile: "local:///opt/spark/jars/dpso.jar"
   arguments:
     - "sync"
     - "10"
-    - "5"
+    - "50"
     - "2"
-    - "/opt/spark/work-dir/best-position.txt"
+    - "/spark-volume/best-position.txt"
+    - "false"
   sparkVersion: "3.1.1"
   restartPolicy:
     type: Never
@@ -23,13 +24,20 @@ spec:
     - name: spark-data
       persistentVolumeClaim:
         claimName: local-pvc
+    - name: "spark-volume"
+      hostPath:
+        path: "/data"
+        type: Directory
   driver:
     cores: 1
     coreLimit: "1200m"
     memory: "512m"
+    securityContext:
+      allowPrivilegeEscalation: false
+      runAsUser: 0
     volumeMounts:
-      - name: spark-data
-        mountPath: /opt/spark/work-dir
+      - name: "spark-data"
+        mountPath: "/spark-volume"
     labels:
       version: 3.1.1
     serviceAccount: spark

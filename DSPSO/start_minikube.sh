@@ -2,4 +2,4 @@ minikube delete
 
 minikube start --cpus 4 --memory 8192
 
-minikube dashboard
+minikube mount /Users/riccardobusetti/mnt/data:/data
