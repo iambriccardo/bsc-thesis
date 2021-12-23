@@ -9,6 +9,6 @@ kubectl create clusterrolebinding spark-operator-role --clusterrole=edit --servi
 # Install the operator with values.yaml.
 helm install pso spark-operator/spark-operator -f ./kubernetes/values.yaml --namespace spark-operator
 
-# Create volumes.
+# Create persistent volume and persistent volume claim.
 kubectl apply -f kubernetes/local-pv.yaml --namespace=spark-jobs
 kubectl apply -f kubernetes/local-pvc.yaml --namespace=spark-jobs

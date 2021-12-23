@@ -11,12 +11,12 @@ spec:
   mainClass: MainKt
   mainApplicationFile: "local:///opt/spark/jars/dpso.jar"
   arguments:
-    - "sync"
+    - "async"
     - "10"
     - "50"
     - "2"
     - "/spark-volume/best-position.txt"
-    - "false"
+    - "true"
   sparkVersion: "3.1.1"
   restartPolicy:
     type: Never
