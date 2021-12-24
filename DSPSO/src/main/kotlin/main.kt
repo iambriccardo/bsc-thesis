@@ -95,12 +95,26 @@ fun synchronousPSO(config: Configuration, sc: JavaSparkContext) {
 }
 
 fun asynchronousPSO(config: Configuration, sc: JavaSparkContext) = runBlocking {
-    // The random particles are initialized.
-    val particles = randomParticlesOfDouble(config.particles, config.dimensionality)
+    val superRDDSize = 8
+    if (superRDDSize > config.particles)
+        throw RuntimeException("The superRDD size must be <= than the number of particles.")
 
-    // Channel containing the particles that need to be sent for evaluation.
-    val particlesChannel = Channel<Particle>(capacity = Channel.UNLIMITED)
-        .apply { particles.forEach { send(it) } }
+    val fillingParticles =
+        if (config.particles % superRDDSize == 0) 0 else (superRDDSize - config.particles % superRDDSize)
+    val numberOfParticles = config.particles + fillingParticles
+
+    // The random particles are initialized.
+    val particles = randomParticlesOfDouble(
+        numberOfParticles, // We want to avoid non-full super rdds.
+        config.dimensionality
+    )
+    println("Updated number of particles: $numberOfParticles")
+
+    // Channel containing all the superRDDs which are going to be executed against the cluster.
+    val superRDDChannel = Channel<SuperRDD>(capacity = Channel.UNLIMITED)
+    val aggregator = superRDDAggregator(superRDDSize, superRDDChannel)
+    particles.forEach { aggregator.aggregate(it) }
+
     // Channel containing the futures connected to the particles remote evaluation.
     val futuresChannel = Channel<JavaFutureAction<List<Particle>>>(capacity = Channel.UNLIMITED)
 
@@ -108,9 +122,11 @@ fun asynchronousPSO(config: Configuration, sc: JavaSparkContext) = runBlocking {
     val stateActor = stateActor()
 
     val producer = launch {
-        for (particle in particlesChannel) {
+        for (superRDD in superRDDChannel) {
+            println("Parallelizing superRDD of size ${superRDD.particles.size}...")
+
             // We send the computation to the cluster.
-            val future = sc.parallelize(listOf(particle))
+            val future = sc.parallelize(superRDD.particles)
                 .map(AsyncFitnessEvaluation(FitnessFunction.Sphere()))
                 .collectAsync()
 
@@ -121,36 +137,41 @@ fun asynchronousPSO(config: Configuration, sc: JavaSparkContext) = runBlocking {
     }
 
     val consumer = launch {
-        repeat(config.iterations * config.particles) {
+        // We iterate for an equivalent number of partitions.
+        repeat(numberOfParticles * config.iterations / superRDDSize) {
             val future = futuresChannel.receive()
 
-            val particle = withContext(Dispatchers.IO) {
-                future.get().first()
+            withContext(Dispatchers.IO) {
+                future.get()
+            }.forEach { particle ->
+                println("Received evaluated particle at $it")
+
+                // We increment the number of evaluated particles.
+                stateActor.mutate { state ->
+                    state.incrementCounter()
+                }
+
+                // We update the best global position.
+                stateActor.mutate { state ->
+                    state.mutateBestGlobalPosition(Tuple2(particle.position, particle.error))
+                }
+
+                // We get a snapshot of the state.
+                val state = stateActor.snapshot()
+                println("Best global until now: ${state.bestGlobalPosition.position()} ${state.bestGlobalPosition.error()}")
+
+                // We update the particle's position and velocity.
+                particle.updateVelocity(state.bestGlobalPosition.position())
+                particle.updatePosition()
+
+                // We send again the particle for further evaluation.
+                // TODO: send only if the channel contains less elements that the remaining number of iterations.
+                aggregator.aggregate(particle)
             }
-            println("Received evaluated particle at $it")
-
-            // We increment the number of evaluated particles.
-            stateActor.mutate { state ->
-                state.incrementCounter()
-            }
-
-            // We update the best global position.
-            stateActor.mutate { state ->
-                state.mutateBestGlobalPosition(Tuple2(particle.position, particle.error))
-            }
-
-            // We get a snapshot of the state.
-            val state = stateActor.snapshot()
-            println("Best global until now: ${state.bestGlobalPosition.position()} ${state.bestGlobalPosition.error()}")
-
-            // We update the particle's position and velocity.
-            particle.updateVelocity(state.bestGlobalPosition.position())
-            particle.updatePosition()
-
-            // We send again the particle for further evaluation.
-            // TODO: send only if the channel contains less elements that the remaining number of iterations.
-            particlesChannel.send(particle)
         }
+
+        // We stop the aggregation of particles.
+        aggregator.stopAggregation()
 
         // We perform the cleanup of the futures after the specific number of iterations is reached.
         // Due to the async behavior of this code it may happen that some futures finish while we are
@@ -170,8 +191,8 @@ fun asynchronousPSO(config: Configuration, sc: JavaSparkContext) = runBlocking {
         // We cancel the futures channel.
         futuresChannel.cancel()
 
-        // We cancel the particles channel.
-        particlesChannel.cancel()
+        // We cancel the super rdd channel.
+        superRDDChannel.cancel()
     }
 
     producer.join()
@@ -186,7 +207,11 @@ fun asynchronousPSO(config: Configuration, sc: JavaSparkContext) = runBlocking {
     stateActor.close()
 }
 
-suspend fun writeFile(config: Configuration, position: Position<Double>, error: Double) = withContext(Dispatchers.IO) {
+suspend fun writeFile(
+    config: Configuration,
+    position: Position<Double>,
+    error: Double
+) = withContext(Dispatchers.IO) {
     println("Writing result to ${config.outputPath}...")
 
     val output = File(config.outputPath)
