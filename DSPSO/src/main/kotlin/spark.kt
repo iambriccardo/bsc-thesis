@@ -4,11 +4,10 @@ import org.apache.spark.util.AccumulatorV2
 import scala.Tuple2
 
 class PositionAccumulator(
-    private val position: MutablePosition<Double>,
-    private val resettable: Boolean = true
+    private val position: MutablePosition<Double>
 ) : AccumulatorV2<Tuple2<Position<Double>?, Double?>, Tuple2<Position<Double>?, Double?>>() {
     override fun isZero(): Boolean {
-        return !resettable || (position.position() == null && position.error() == null)
+        return position.position() == null && position.error() == null
     }
 
     override fun copy(): AccumulatorV2<Tuple2<Position<Double>?, Double?>, Tuple2<Position<Double>?, Double?>> {
@@ -18,8 +17,7 @@ class PositionAccumulator(
     }
 
     override fun reset() {
-        if (resettable)
-            position.reset()
+        position.reset()
     }
 
     override fun add(value: Tuple2<Position<Double>?, Double?>) {
@@ -36,6 +34,10 @@ class PositionAccumulator(
         return Tuple2(position.position(), position.error())
     }
 }
+
+data class SuperRDD(
+    val particles: List<Particle>
+)
 
 class FitnessEvaluation(
     private val fitnessFunction: FitnessFunction<Position<Double>, Double>,

@@ -14,7 +14,7 @@ fun main(args: Array<String>) {
     val config = args.asConfiguration()
 
     val spark = SparkConf()
-        //.setMaster("local[*]")
+        .setMaster("local[*]")
         .setAppName("DSPSO")
         .set("spark.scheduler.mode", "FAIR") // We allow multiple jobs to be executed in a round robin fashion.
         .set("spark.kubernetes.driver.annotation.sidecar.istio.io/inject", "false")
@@ -24,7 +24,7 @@ fun main(args: Array<String>) {
 
     val time = measureTimeMillis {
         if (config.isSynchronous) {
-            println("Starting SYNCHRONOUS PSO...")
+            println("Starting SYNCHRONOUS PSO ${if (config.distributedPosEval) "with" else "without"} DISTRIBUTED POS EVAL...")
             synchronousPSO(config, sc)
         } else {
             println("Starting ASYNCHRONOUS PSO...")
@@ -38,7 +38,6 @@ fun main(args: Array<String>) {
     if (config.keepAlive) {
         println("Keeping alive the JVM...")
         while (true) {
-
         }
     }
 }
@@ -71,10 +70,15 @@ fun synchronousPSO(config: Configuration, sc: JavaSparkContext) {
 
         // The particles' velocity and position are updated according to the best positions computed in the
         // previous step.
-        movedParticles = sc
-            .parallelize(evaluatedParticles)
-            .map(PositionEvaluation(bestGlobalPositionBroadcast))
-            .collect()
+        movedParticles = if (config.distributedPosEval) {
+            sc.parallelize(evaluatedParticles)
+                .map(PositionEvaluation(bestGlobalPositionBroadcast))
+                .collect()
+        } else {
+            evaluatedParticles.map { particle ->
+                PositionEvaluation(bestGlobalPositionBroadcast).call(particle)
+            }
+        }
 
         bestPosition = bestGlobalPositionBroadcast.value
         println("Best global until now: ${bestGlobalPositionBroadcast.value}")

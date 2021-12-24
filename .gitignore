@@ -7,3 +7,4 @@
 **/bin
 **/libs
 *.iml
+/DSPSO/results
