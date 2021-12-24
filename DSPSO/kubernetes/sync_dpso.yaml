@@ -1,0 +1,46 @@
+apiVersion: "sparkoperator.k8s.io/v1beta2"
+kind: SparkApplication
+metadata:
+  name: dpso
+  namespace: spark-jobs
+spec:
+  type: Scala
+  mode: cluster
+  image: "riccardobusetti/spark:v1.0"
+  imagePullPolicy: IfNotPresent
+  mainClass: MainKt
+  mainApplicationFile: "local:///opt/spark/jars/dpso.jar"
+  arguments:
+    - "sync"
+    - "true"
+    - "10"
+    - "50"
+    - "2"
+    - "/spark-volume/sync-best-position.txt"
+    - "true"
+  sparkVersion: "3.1.1"
+  restartPolicy:
+    type: Never
+  volumes:
+    - name: spark-data
+      persistentVolumeClaim:
+        claimName: local-pvc
+  driver:
+    cores: 1
+    coreLimit: "1200m"
+    memory: "512m"
+    securityContext:
+      allowPrivilegeEscalation: false
+      runAsUser: 0
+    volumeMounts:
+      - name: "spark-data"
+        mountPath: "/spark-volume"
+    labels:
+      version: 3.1.1
+    serviceAccount: spark
+  executor:
+    cores: 1
+    instances: 2
+    memory: "512m"
+    labels:
+      version: 3.1.1

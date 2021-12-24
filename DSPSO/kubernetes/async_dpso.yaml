@@ -12,10 +12,11 @@ spec:
   mainApplicationFile: "local:///opt/spark/jars/dpso.jar"
   arguments:
     - "async"
+    - "true"
     - "10"
     - "50"
     - "2"
-    - "/spark-volume/best-position.txt"
+    - "/spark-volume/async-best-position.txt"
     - "true"
   sparkVersion: "3.1.1"
   restartPolicy:
@@ -24,10 +25,6 @@ spec:
     - name: spark-data
       persistentVolumeClaim:
         claimName: local-pvc
-    - name: "spark-volume"
-      hostPath:
-        path: "/data"
-        type: Directory
   driver:
     cores: 1
     coreLimit: "1200m"
