@@ -35,9 +35,7 @@ class PositionAccumulator(
     }
 }
 
-data class SuperRDD(
-    val particles: List<Particle>
-)
+data class SuperRDD(val particles: List<Particle>)
 
 class FitnessEvaluation(
     private val fitnessFunction: FitnessFunction<Position<Double>, Double>,
@@ -49,7 +47,7 @@ class FitnessEvaluation(
 
         // The personal best position is saved.
         if (particle.bestPersonalError == null
-            || (particle.bestPersonalError != null && particle.bestPersonalError!! > particle.error!!)
+            || (particle.bestPersonalError!! > particle.error!!)
         ) {
             particle.bestPersonalPosition = particle.position.toMutableList()
             particle.bestPersonalError = particle.error
@@ -71,7 +69,7 @@ class AsyncFitnessEvaluation(
 
         // The personal best position is saved.
         if (particle.bestPersonalError == null
-            || (particle.bestPersonalError != null && particle.bestPersonalError!! > particle.error!!)
+            || (particle.bestPersonalError!! > particle.error!!)
         ) {
             particle.bestPersonalPosition = particle.position.toMutableList()
             particle.bestPersonalError = particle.error
@@ -87,24 +85,6 @@ class PositionEvaluation(
     override fun call(particle: Particle): Particle {
         // The best global position is read from the broadcast variable copy on the executor.
         val bestGlobalPosition = bestGlobalPositionBroadcast.value._1
-
-        // The particle's velocity is updated.
-        particle.updateVelocity(bestGlobalPosition)
-
-        // The particle's position is updated.
-        particle.updatePosition()
-
-        return particle
-    }
-}
-
-class AsyncPositionEvaluation(
-    private val bestGlobalPositionAccumulator: PositionAccumulator
-) : Function<Particle, Particle> {
-    override fun call(particle: Particle): Particle {
-        // The best global position is read from the broadcast variable copy on the executor.
-        val bestGlobalTuple = bestGlobalPositionAccumulator.value()
-        val bestGlobalPosition = bestGlobalTuple._1
 
         // The particle's velocity is updated.
         particle.updateVelocity(bestGlobalPosition)

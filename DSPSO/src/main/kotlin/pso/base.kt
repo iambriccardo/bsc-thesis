@@ -2,10 +2,7 @@ import java.io.Serializable
 import kotlin.random.Random
 
 typealias Position<T> = MutableList<T>
-
-fun <T> emptyPosition(): Position<T> {
-    return mutableListOf()
-}
+typealias Velocity<T> = MutableList<T>
 
 interface MutablePosition<T> : Serializable {
     fun mutate(position: Position<T>, error: T)
@@ -20,7 +17,7 @@ interface MutablePosition<T> : Serializable {
     ) : MutablePosition<Double> {
 
         override fun mutate(position: Position<Double>, error: Double) {
-            if (bestError == null || (bestError != null && bestError!! > error)) {
+            if (bestError == null || bestError!! > error) {
                 bestPosition = position.toMutableList()
                 bestError = error
             }
@@ -37,19 +34,20 @@ interface MutablePosition<T> : Serializable {
     }
 }
 
-typealias Velocity<T> = MutableList<T>
-
-fun <T> emptyVelocity(): Velocity<T> {
-    return mutableListOf()
-}
+data class Particle(
+    var position: Position<Double>,
+    var error: Double?,
+    var bestPersonalPosition: Position<Double>?,
+    var bestPersonalError: Double?,
+    var velocity: Velocity<Double>
+) : Serializable
 
 fun Particle.updateVelocity(bestGlobalPosition: Position<Double>?) {
-    val numberOfDimensions = position.size
     val w = 0.729
     val c1 = 1.49445
     val c2 = 1.49445
 
-    (0 until numberOfDimensions).forEach {
+    repeat(position.size) {
         val r1 = Random.nextDouble()
         val r2 = Random.nextDouble()
 
@@ -63,19 +61,10 @@ fun Particle.updateVelocity(bestGlobalPosition: Position<Double>?) {
 fun Particle.updatePosition() {
     val numberOfDimensions = position.size
 
-    (0 until numberOfDimensions).forEach {
+    repeat(numberOfDimensions) {
         position[it] = position[it] + velocity[it]
-        // TODO: implement bounds.
     }
 }
-
-data class Particle(
-    var position: Position<Double>,
-    var error: Double?,
-    var bestPersonalPosition: Position<Double>?,
-    var bestPersonalError: Double?,
-    var velocity: Velocity<Double>
-) : Serializable
 
 interface FitnessFunction<I, O> : Serializable {
     fun evaluate(input: I): O

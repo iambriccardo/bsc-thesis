@@ -1,3 +1,5 @@
+package util
+
 data class Configuration(
     val isSynchronous: Boolean = false,
     val distributedPosEval: Boolean = false,

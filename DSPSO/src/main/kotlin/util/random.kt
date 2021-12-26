@@ -1,7 +1,7 @@
 fun randomParticlesOfDouble(numberOfParticles: Int, dimensionality: Int): List<Particle> {
     val particles = mutableListOf<Particle>()
 
-    repeat((0 until numberOfParticles).count()) {
+    repeat(numberOfParticles) {
         val particle = Particle(
             randomPositionOfDouble(dimensionality),
             null,
@@ -17,9 +17,9 @@ fun randomParticlesOfDouble(numberOfParticles: Int, dimensionality: Int): List<P
 }
 
 fun randomPositionOfDouble(dimensionality: Int): Position<Double> {
-    val position = emptyPosition<Double>()
+    val position = mutableListOf<Double>()
 
-    repeat((0 until dimensionality).count()) {
+    repeat(dimensionality) {
         position.add(5.0)
     }
 
@@ -27,9 +27,9 @@ fun randomPositionOfDouble(dimensionality: Int): Position<Double> {
 }
 
 fun randomVelocityOfDouble(dimensionality: Int): Velocity<Double> {
-    val velocity = emptyPosition<Double>()
+    val velocity = mutableListOf<Double>()
 
-    repeat((0 until dimensionality).count()) {
+    repeat(dimensionality) {
         velocity.add(1.0)
     }
 
