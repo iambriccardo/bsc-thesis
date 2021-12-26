@@ -11,12 +11,12 @@ spec:
   mainClass: MainKt
   mainApplicationFile: "local:///opt/spark/jars/dpso.jar"
   arguments:
-    - "--sync"
-    - "--iterations=10"
-    - "--particles=10"
+    - "--async"
+    - "--iterations=100"
+    - "--particles=100"
     - "--dimensionality=2"
     - "--super-rdd-size=10"
-    - "--result-path=/spark-volume/sync-best-position.txt"
+    - "--result-path=/spark-volume/async-best-position.txt"
     - "--keep-alive"
   sparkVersion: "3.1.1"
   restartPolicy:

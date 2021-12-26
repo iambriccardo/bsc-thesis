@@ -15,4 +15,4 @@ fi
 sleep 20
 
 # Expose spark ui.
-kubectl port-forward service/dpso-ui-svc 4040:4040 --namespace=spark-jobs
+kubectl port-forward service/$VARIANT-dpso-ui-svc 4040:4040 --namespace=spark-jobs

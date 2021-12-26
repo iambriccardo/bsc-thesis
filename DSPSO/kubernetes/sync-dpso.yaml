@@ -13,8 +13,8 @@ spec:
   arguments:
     - "--sync"
     - "--distributed-pos-eval"
-    - "--iterations=10"
-    - "--particles=10"
+    - "--iterations=100"
+    - "--particles=100"
     - "--dimensionality=2"
     - "--result-path=/spark-volume/sync-best-position.txt"
     - "--keep-alive"
