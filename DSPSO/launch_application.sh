@@ -1,14 +1,14 @@
 echo "Choose variant of the algorithm [sync|async]:"
 read VARIANT
 
-# Delete old application if exists.
-kubectl delete -n spark-jobs sparkapplications.sparkoperator.k8s.io dpso
-
 # Launch application.
 if [[ "$VARIANT" == "sync" ]]; then
-  kubectl apply -f kubernetes/sync_dpso.yaml --namespace=spark-jobs
+  # Delete old application if exists.
+  kubectl delete -n spark-jobs sparkapplications.sparkoperator.k8s.io sync-dpso
+  kubectl apply -f kubernetes/sync-dpso.yaml --namespace=spark-jobs
 elif [[ "$VARIANT" == "async" ]]; then
-  kubectl apply -f kubernetes/async_dpso.yaml --namespace=spark-jobs
+  kubectl delete -n spark-jobs sparkapplications.sparkoperator.k8s.io async-dpso
+  kubectl apply -f kubernetes/async-dpso.yaml --namespace=spark-jobs
 fi
 
 # We wait for 20 seconds just to give time to the driver pod to start.

@@ -2,6 +2,8 @@ package pso
 
 import AsyncFitnessEvaluation
 import FitnessEvaluation
+import FitnessFunction
+import MutablePosition
 import Particle
 import Position
 import PositionAccumulator
@@ -43,10 +45,10 @@ object PSO {
         var movedParticles: List<Particle> = emptyList()
         var bestPosition: Tuple2<Position<Double>?, Double?>? = null
 
-        repeat(config.iterations) {
+        repeat(config.iterations.toInt()) {
             println("Iteration $it started")
             inputParticles = if (isFirstRound)
-                randomParticlesOfDouble(config.particles, config.dimensionality)
+                randomParticlesOfDouble(config.particles.toInt(), config.dimensionality.toInt())
             else movedParticles
 
             // The particles are evaluated and the best positions are computed.
@@ -87,18 +89,19 @@ object PSO {
      * Asynchronous version of the Spark Distributed PSO algorithm.
      */
     fun async(config: Configuration, sc: JavaSparkContext) = runBlocking {
-        val superRDDSize = 8
-        if (superRDDSize > config.particles)
+        val superRDDSize = config.superRDDSize.toInt()
+        if (superRDDSize > config.particles.toInt())
             throw RuntimeException("The superRDD size must be <= than the number of particles.")
 
         val fillingParticles =
-            if (config.particles % superRDDSize == 0) 0 else (superRDDSize - config.particles % superRDDSize)
-        val numberOfParticles = config.particles + fillingParticles
+            if (config.particles.toInt() % superRDDSize == 0) 0
+            else (superRDDSize - config.particles.toInt() % superRDDSize)
+        val numberOfParticles = config.particles.toInt() + fillingParticles
 
         // The random particles are initialized.
         val particles = randomParticlesOfDouble(
             numberOfParticles, // We want to avoid non-full super rdds.
-            config.dimensionality
+            config.dimensionality.toInt()
         )
         println("Updated number of particles: $numberOfParticles")
 
@@ -130,7 +133,7 @@ object PSO {
 
         val consumer = launch {
             // We iterate for an equivalent number of partitions.
-            repeat(numberOfParticles * config.iterations / superRDDSize) {
+            repeat(numberOfParticles * config.iterations.toInt() / superRDDSize) {
                 withContext(Dispatchers.IO) {
                     futuresChannel.receive().get()
                 }.forEach { particle ->

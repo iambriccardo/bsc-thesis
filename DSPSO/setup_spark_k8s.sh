@@ -1,3 +1,6 @@
+# Update the helm repositories.
+helm repo update
+
 # Create namespaces.
 kubectl create namespace spark-operator
 kubectl create namespace spark-jobs

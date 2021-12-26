@@ -1,7 +1,7 @@
 apiVersion: "sparkoperator.k8s.io/v1beta2"
 kind: SparkApplication
 metadata:
-  name: dpso
+  name: async-dpso
   namespace: spark-jobs
 spec:
   type: Scala
@@ -11,13 +11,13 @@ spec:
   mainClass: MainKt
   mainApplicationFile: "local:///opt/spark/jars/dpso.jar"
   arguments:
-    - "async"
-    - "true"
-    - "10"
-    - "50"
-    - "2"
-    - "/spark-volume/async-best-position.txt"
-    - "true"
+    - "--sync"
+    - "--iterations=10"
+    - "--particles=10"
+    - "--dimensionality=2"
+    - "--super-rdd-size=10"
+    - "--result-path=/spark-volume/sync-best-position.txt"
+    - "--keep-alive"
   sparkVersion: "3.1.1"
   restartPolicy:
     type: Never

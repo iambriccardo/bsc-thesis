@@ -1,19 +1,29 @@
 package util
 
-import kotlin.time.ExperimentalTime
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
+import kotlin.time.ExperimentalTime
 import kotlin.time.measureTimedValue
 
 interface Execution<O> {
     fun execute(executionName: String, block: () -> O): ExecutionResult<O>
 }
 
-data class ExecutionResult<O> @OptIn(ExperimentalTime::class) constructor(val executionName: String, val duration: Duration, val output: O)
+data class ExecutionResult<O> @OptIn(ExperimentalTime::class) constructor(
+    val executionName: String,
+    val duration: Duration,
+    val output: O
+)
 
 @OptIn(ExperimentalTime::class)
 fun <O> ExecutionResult<O>.toFile(configuration: Configuration) {
     val fileRepresentation = "Execution result for [$executionName]" +
+            "\n" + "----" +
+            "\n" + "Configuration:" +
+            "\n" + "- ${configuration.iterations} iterations" +
+            "\n" + "- ${configuration.particles} particles" +
+            "\n" + "- ${configuration.dimensionality} dimensions" +
+            "\n" + "- ${configuration.superRDDSize} particles per super rdd" +
             "\n" + "----" +
             "\n" + "Duration:" +
             "\n" + "- ${duration.toDouble(DurationUnit.HOURS)} hours" +
@@ -29,7 +39,7 @@ fun <O> ExecutionResult<O>.toFile(configuration: Configuration) {
 
 @OptIn(ExperimentalTime::class)
 fun <O> newTimedExecution(block: Execution<O>.() -> Unit) {
-    val execution = object: Execution<O> {
+    val execution = object : Execution<O> {
         override fun execute(executionName: String, block: () -> O): ExecutionResult<O> {
             println("Starting execution [$executionName]...")
 

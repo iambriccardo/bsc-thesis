@@ -1,25 +1,59 @@
 package util
 
-data class Configuration(
-    val isSynchronous: Boolean = false,
-    val distributedPosEval: Boolean = false,
-    val iterations: Int = 0,
-    val particles: Int = 0,
-    val dimensionality: Int = 0,
-    val outputPath: String,
-    val keepAlive: Boolean = false,
-)
+import com.xenomachina.argparser.ArgParser
+import com.xenomachina.argparser.default
 
-fun Array<String>.asConfiguration(): Configuration {
-    if (this.size < 7) throw RuntimeException("Not all the arguments have been provided.")
+enum class AlgorithmType {
+    NORMAL,
+    SYNC,
+    ASYNC
+}
 
-    return Configuration(
-        this[0] == "sync",
-        this[1] == "true",
-        this[2].toInt(),
-        this[3].toInt(),
-        this[4].toInt(),
-        this[5],
-        this[6] == "true"
+class Configuration(parser: ArgParser) {
+    val algorithmType by parser.mapping(
+        "--normal" to AlgorithmType.NORMAL,
+        "--sync" to AlgorithmType.SYNC,
+        "--async" to AlgorithmType.ASYNC,
+        help = "type of the algorithm"
+    )
+
+    val distributedPosEval by parser.flagging(
+        "--distributed-pos-eval",
+        help = "enable distributed position evaluation (only for sync)"
+    )
+
+    val iterations by parser.storing(
+        "--iterations",
+        help = "number of iterations"
+    )
+
+    val particles by parser.storing(
+        "--particles",
+        help = "number of particles"
+    )
+
+    val dimensionality by parser.storing(
+        "--dimensionality",
+        help = "dimensions of each particle"
+    )
+
+    val superRDDSize by parser.storing(
+        "--super-rdd-size",
+        help = "size of the super rdd"
+    ).default("N/A")
+
+    val resultPath by parser.storing(
+        "--result-path",
+        help = "path + filename where the result will be written"
+    )
+
+    val keepAlive by parser.flagging(
+        "--keep-alive",
+        help = "keep alive the JVM after the algorithm is finished"
+    )
+
+    val localMaster by parser.flagging(
+        "--local-master",
+        help = "runs the program with the master local[*]"
     )
 }

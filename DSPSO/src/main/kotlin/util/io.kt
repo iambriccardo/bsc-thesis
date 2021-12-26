@@ -3,18 +3,18 @@ package util
 import java.io.File
 
 fun writeFile(config: Configuration, content: String) {
-    println("Writing file to ${config.outputPath}...")
+    println("Writing file to ${config.resultPath}...")
 
-    val output = File(config.outputPath)
+    val output = File(config.resultPath)
     output.parentFile.mkdirs()
     output.createNewFile()
     output.writeText(content)
 
-    println("File written to ${config.outputPath}")
+    println("File written to ${config.resultPath}")
 }
 
 fun keepJVMAlive() {
-    while(true) {
+    while (true) {
 
     }
 }
