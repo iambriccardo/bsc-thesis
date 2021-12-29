@@ -53,7 +53,10 @@ object PSO {
             inputParticles = inputParticles
                 .map { particle ->
                     particle.apply {
-                        particle.error = FitnessFunction.Sphere().evaluate(particle.position)
+                        particle.error = FitnessFunction.Sphere().delayedEvaluation(
+                            config.fitnessEvalDelay.toLong(),
+                            particle.position
+                        )
                         particle.updateBestPersonalPosition()
                         bestGlobalPosition.mutate(particle.position, particle.error!!)
                     }
@@ -99,7 +102,13 @@ object PSO {
             // The particles are evaluated and the best positions are computed.
             inputParticles = sc
                 .parallelize(inputParticles)
-                .map(FitnessEvaluation(FitnessFunction.Sphere(), bestGlobalPositionAccumulator))
+                .map(
+                    FitnessEvaluation(
+                        FitnessFunction.Sphere(),
+                        bestGlobalPositionAccumulator,
+                        config.fitnessEvalDelay.toLong()
+                    )
+                )
                 .collect()
 
             // The best global position is derived via a merge of all the executor specific accumulators.
@@ -183,7 +192,7 @@ object PSO {
 
                 // We send the computation to the cluster.
                 val future = sc.parallelize(superRDD.particles)
-                    .map(AsyncFitnessEvaluation(FitnessFunction.Sphere()))
+                    .map(AsyncFitnessEvaluation(FitnessFunction.Sphere(), config.fitnessEvalDelay.toLong()))
                     .collectAsync()
 
                 // We send the future to the channel which contains all the computations

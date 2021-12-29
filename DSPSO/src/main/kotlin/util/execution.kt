@@ -24,6 +24,7 @@ fun <O> ExecutionResult<O>.toFile(configuration: Configuration) {
             "\n" + "- ${configuration.particles} particles" +
             "\n" + "- ${configuration.dimensionality} dimensions" +
             "\n" + "- ${configuration.superRDDSize} particles per super rdd" +
+            "\n" + "- ${configuration.fitnessEvalDelay} fitness evaluation delay in ms" +
             "\n" + "----" +
             "\n" + "Duration:" +
             "\n" + "- ${duration.toDouble(DurationUnit.HOURS)} hours" +

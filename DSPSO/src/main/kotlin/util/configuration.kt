@@ -56,4 +56,9 @@ class Configuration(parser: ArgParser) {
         "--local-master",
         help = "runs the program with the master local[*]"
     )
+
+    val fitnessEvalDelay by parser.storing(
+        "--fitness-eval-delay",
+        help = "artificial delay for any fitness function evaluation"
+    ).default("0")
 }

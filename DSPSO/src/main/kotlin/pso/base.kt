@@ -76,6 +76,11 @@ fun Particle.updatePosition() {
 interface FitnessFunction<I, O> : Serializable {
     fun evaluate(input: I): O
 
+    fun delayedEvaluation(delay: Long, input: I): O {
+        Thread.sleep(delay)
+        return evaluate(input)
+    }
+
     class Sphere : FitnessFunction<Position<Double>, Double> {
         override fun evaluate(input: Position<Double>): Double {
             var result = 0.0
@@ -83,8 +88,6 @@ interface FitnessFunction<I, O> : Serializable {
             input.forEach {
                 result += it * it
             }
-
-            Thread.sleep(0)
 
             return result
         }

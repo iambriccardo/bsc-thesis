@@ -39,11 +39,12 @@ data class SuperRDD(val particles: List<Particle>)
 
 class FitnessEvaluation(
     private val fitnessFunction: FitnessFunction<Position<Double>, Double>,
-    private val bestGlobalPositionAccumulator: PositionAccumulator
+    private val bestGlobalPositionAccumulator: PositionAccumulator,
+    private val delay: Long = 0
 ) : Function<Particle, Particle> {
     override fun call(particle: Particle): Particle {
         // The fitness function is evaluated with the current particle's position.
-        particle.error = fitnessFunction.evaluate(particle.position)
+        particle.error = fitnessFunction.delayedEvaluation(delay, particle.position)
 
         // The personal best position is saved.
         particle.updateBestPersonalPosition()
@@ -57,10 +58,11 @@ class FitnessEvaluation(
 
 class AsyncFitnessEvaluation(
     private val fitnessFunction: FitnessFunction<Position<Double>, Double>,
+    private val delay: Long = 0
 ) : Function<Particle, Particle> {
     override fun call(particle: Particle): Particle {
         // The fitness function is evaluated with the current particle's position.
-        particle.error = fitnessFunction.evaluate(particle.position)
+        particle.error = fitnessFunction.delayedEvaluation(delay, particle.position)
 
         // The personal best position is saved.
         if (particle.bestPersonalError == null

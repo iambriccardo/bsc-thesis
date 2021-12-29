@@ -45,7 +45,7 @@ fun CoroutineScope.stateActor() = actor<StateMessage> {
             is GetState -> {
                 msg.snapshot.complete(state)
             }
-            else -> { }
+            else -> {}
         }
     }
 }
@@ -100,7 +100,7 @@ fun CoroutineScope.superRDDAggregator(size: Int, receiver: SendChannel<SuperRDD>
                 channel.close()
                 reset()
             }
-            else -> { }
+            else -> {}
         }
     }
 }

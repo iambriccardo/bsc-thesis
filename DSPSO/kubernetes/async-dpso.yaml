@@ -12,6 +12,7 @@ spec:
   mainApplicationFile: "local:///opt/spark/jars/dpso.jar"
   arguments:
     - "--async"
+    - "--fitness-eval-delay=0"
     - "--iterations=100"
     - "--particles=100"
     - "--dimensionality=2"
