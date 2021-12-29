@@ -1,5 +1,6 @@
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.channels.actor
 import scala.Tuple2
@@ -31,6 +32,7 @@ sealed class StateMessage
 class MutateState(val mutator: StateMutator) : StateMessage()
 class GetState(val snapshot: StateSnapshot) : StateMessage()
 
+@OptIn(ObsoleteCoroutinesApi::class)
 fun CoroutineScope.stateActor() = actor<StateMessage> {
     // We initialize the shared state as empty.
     var state = State(0, MutablePosition.BestPosition())
@@ -40,7 +42,10 @@ fun CoroutineScope.stateActor() = actor<StateMessage> {
             is MutateState -> {
                 state = msg.mutator(state)
             }
-            is GetState -> msg.snapshot.complete(state)
+            is GetState -> {
+                msg.snapshot.complete(state)
+            }
+            else -> { }
         }
     }
 }
@@ -62,6 +67,7 @@ sealed class AggregatorMessage
 class Aggregate(val particle: Particle) : AggregatorMessage()
 object StopAggregation : AggregatorMessage()
 
+@OptIn(ObsoleteCoroutinesApi::class)
 fun CoroutineScope.superRDDAggregator(size: Int, receiver: SendChannel<SuperRDD>) = actor<AggregatorMessage> {
     var aggregatedSize = 0
     val aggregatedParticles = Array<Particle?>(size) { null }
@@ -94,6 +100,7 @@ fun CoroutineScope.superRDDAggregator(size: Int, receiver: SendChannel<SuperRDD>
                 channel.close()
                 reset()
             }
+            else -> { }
         }
     }
 }

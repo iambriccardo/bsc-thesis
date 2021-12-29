@@ -26,6 +26,7 @@ import snapshot
 import stateActor
 import stopAggregation
 import superRDDAggregator
+import updateBestPersonalPosition
 import updatePosition
 import updateVelocity
 import util.Configuration
@@ -33,87 +34,147 @@ import util.Configuration
 object PSO {
 
     /**
+     * Normal version of the standard PSO algorithm.
+     */
+    fun normal(config: Configuration): Tuple2<Position<Double>?, Double?> {
+        // Base algorithm parameters.
+        val iterations = config.iterations.toInt()
+        val particles = config.particles.toInt()
+        val dimensionality = config.dimensionality.toInt()
+
+        // Best global position.
+        val bestGlobalPosition = MutablePosition.BestPosition()
+
+        var inputParticles: List<Particle> = randomParticlesOfDouble(particles, dimensionality)
+        repeat(iterations) {
+            println("Iteration $it started")
+
+            // The particles are evaluated and the best positions are computed.
+            inputParticles = inputParticles
+                .map { particle ->
+                    particle.apply {
+                        particle.error = FitnessFunction.Sphere().evaluate(particle.position)
+                        particle.updateBestPersonalPosition()
+                        bestGlobalPosition.mutate(particle.position, particle.error!!)
+                    }
+                }
+                .map { particle ->
+                    particle.apply {
+                        updateVelocity(bestGlobalPosition.position())
+                        updatePosition()
+                    }
+                }
+
+            println("Best global position until now: ${bestGlobalPosition.position()}  ${bestGlobalPosition.error()}")
+        }
+
+        println("Best global position: ${bestGlobalPosition.position()}  ${bestGlobalPosition.error()}")
+
+        return Tuple2(bestGlobalPosition.position(), bestGlobalPosition.error())
+    }
+
+    /**
      * Synchronous version of the Spark Distributed PSO algorithm.
      */
     fun sync(config: Configuration, sc: JavaSparkContext): Tuple2<Position<Double>?, Double?> {
-        // The global position accumulator is registered.
-        val globalBestPositionAccumulator = PositionAccumulator(MutablePosition.BestPosition())
-        sc.sc().register(globalBestPositionAccumulator, "GlobalBestAccumulator")
+        // Base algorithm parameters.
+        val iterations = config.iterations.toInt()
+        val particles = config.particles.toInt()
+        val dimensionality = config.dimensionality.toInt()
 
-        var isFirstRound = true
-        var inputParticles: List<Particle>
-        var movedParticles: List<Particle> = emptyList()
-        var bestPosition: Tuple2<Position<Double>?, Double?>? = null
+        // Spark accumulator for accumulating the best global position for each partition.
+        val bestGlobalPositionAccumulator = PositionAccumulator(MutablePosition.BestPosition())
+        sc.sc().register(bestGlobalPositionAccumulator, "BestGlobalPositionAccumulator")
 
-        repeat(config.iterations.toInt()) {
-            println("Iteration $it started")
-            inputParticles = if (isFirstRound)
-                randomParticlesOfDouble(config.particles.toInt(), config.dimensionality.toInt())
-            else movedParticles
+        // Best global position.
+        var bestGlobalPosition: Tuple2<Position<Double>?, Double?> = Tuple2(null, null)
+
+        var inputParticles: List<Particle> = randomParticlesOfDouble(particles, dimensionality)
+        repeat(iterations) {
+            println(
+                "Iteration $it started with " +
+                        "${if (config.distributedPosEval) "distributed" else "centralized"} collection."
+            )
 
             // The particles are evaluated and the best positions are computed.
-            val evaluatedParticles = sc
+            inputParticles = sc
                 .parallelize(inputParticles)
-                .map(FitnessEvaluation(FitnessFunction.Sphere(), globalBestPositionAccumulator))
+                .map(FitnessEvaluation(FitnessFunction.Sphere(), bestGlobalPositionAccumulator))
                 .collect()
 
             // The best global position is derived via a merge of all the executor specific accumulators.
-            // The value is then broadcast to all the executors of the cluster, as a read only variable.
-            val bestGlobalPositionBroadcast = sc.broadcast(globalBestPositionAccumulator.value())
+            bestGlobalPosition = bestGlobalPositionAccumulator.value()
 
             // The particles' velocity and position are updated according to the best positions computed in the
             // previous step.
-            movedParticles = if (config.distributedPosEval) {
-                sc.parallelize(evaluatedParticles)
+            inputParticles = if (config.distributedPosEval) {
+                // The best global position is broadcast to all the nodes in the cluster.
+                val bestGlobalPositionBroadcast = sc.broadcast(bestGlobalPosition)
+
+                // We evaluate each particle's position on the cluster by reading the best
+                // global position from the broadcast variable.
+                sc.parallelize(inputParticles)
                     .map(PositionEvaluation(bestGlobalPositionBroadcast))
                     .collect()
             } else {
-                evaluatedParticles.map { particle ->
-                    PositionEvaluation(bestGlobalPositionBroadcast).call(particle)
+                // We evaluate each particle's position locally.
+                inputParticles.map { particle ->
+                    particle.updateVelocity(bestGlobalPosition._1)
+                    particle.updatePosition()
+
+                    particle
                 }
             }
 
-            bestPosition = bestGlobalPositionBroadcast.value
-            println("Best global until now: ${bestGlobalPositionBroadcast.value}")
-
-            isFirstRound = false
-            println("Iteration $it ended")
+            println("Best global position until now: $bestGlobalPosition")
         }
 
-        println("Best position: ${bestPosition!!._1} ${bestPosition!!._2}")
+        println("Best global position: $bestGlobalPosition")
 
-        return bestPosition!!
+        return bestGlobalPosition
     }
 
     /**
      * Asynchronous version of the Spark Distributed PSO algorithm.
      */
     fun async(config: Configuration, sc: JavaSparkContext) = runBlocking {
+        // Base algorithm parameters.
+        val iterations = config.iterations.toInt()
+        val baseParticles = config.particles.toInt()
+        val dimensionality = config.dimensionality.toInt()
         val superRDDSize = config.superRDDSize.toInt()
-        if (superRDDSize > config.particles.toInt())
-            throw RuntimeException("The superRDD size must be <= than the number of particles.")
-
+        if (superRDDSize < 1 || superRDDSize > baseParticles)
+            throw RuntimeException("The superRDD size must be > 0 or <= than the number of particles.")
+        // We compute the number of filling particles in order to obtain full super rdds with the aim of
+        // maximizing each super rdd content.
+        //
+        // e.g. If we have the super rdd of size 8, and we decide to use 10 particles, we are always going to
+        // end up with two super rdds, one with 8 particles and one with 2 particles, which will be a waste of resources
+        // especially if the super rdd size if computed to exploit as much as possible the underlying cluster. Therefore,
+        // the algorithm will automatically add 6 particles so that we are able to create two full super rdds of size 8,
+        // with a total of 16 particles. This allows also for a more precise conversion of iterations, meaning that if we have
+        // 16 particles and 10 iterations we know that the equivalent number of particle evaluations in the sync pso will be 160,
+        // therefore in the async algorithm we are going to evaluate 160 particles, however if the super rdd size n is > 1,
+        // then 160/n iterations will be needed to consume the same number of particles because each iteration will consume n particles.
         val fillingParticles =
-            if (config.particles.toInt() % superRDDSize == 0) 0
-            else (superRDDSize - config.particles.toInt() % superRDDSize)
-        val numberOfParticles = config.particles.toInt() + fillingParticles
+            if (baseParticles % superRDDSize == 0) 0
+            else (superRDDSize - (baseParticles % superRDDSize))
+        val particles = baseParticles + fillingParticles
 
         // The random particles are initialized.
-        val particles = randomParticlesOfDouble(
-            numberOfParticles, // We want to avoid non-full super rdds.
-            config.dimensionality.toInt()
-        )
-        println("Updated number of particles: $numberOfParticles")
+        val inputParticles = randomParticlesOfDouble(baseParticles, dimensionality)
+        println("Updated number of particles: $particles")
 
         // Channel containing all the superRDDs which are going to be executed against the cluster.
         val superRDDChannel = Channel<SuperRDD>(capacity = Channel.UNLIMITED)
+        // Aggregator which will manage all the aggregation of incoming particles into super rdds.
         val aggregator = superRDDAggregator(superRDDSize, superRDDChannel)
-        particles.forEach { aggregator.aggregate(it) }
-
+        inputParticles.forEach { aggregator.aggregate(it) }
         // Channel containing the futures connected to the particles remote evaluation.
         val futuresChannel = Channel<JavaFutureAction<List<Particle>>>(capacity = Channel.UNLIMITED)
 
-        // Shared state actor which simplifies shared state among coroutines.
+        // Shared state actor which contains the share state accessible in a thread safe way by all
+        // the coroutines.
         val stateActor = stateActor()
 
         val producer = launch {
@@ -132,12 +193,14 @@ object PSO {
         }
 
         val consumer = launch {
-            // We iterate for an equivalent number of partitions.
-            repeat(numberOfParticles * config.iterations.toInt() / superRDDSize) {
+            // We iterate for an equivalent number of partitions to the number of theoretical
+            // particle evaluations done if this algorithm was synchronous.
+            repeat((particles * iterations) / superRDDSize) {
                 withContext(Dispatchers.IO) {
                     futuresChannel.receive().get()
                 }.forEach { particle ->
                     println("Received evaluated particle at $it")
+
                     // We increment the number of evaluated particles.
                     stateActor.mutate { state ->
                         state.incrementCounter()
@@ -150,7 +213,7 @@ object PSO {
 
                     // We get a snapshot of the state.
                     val state = stateActor.snapshot()
-                    println("Best global until now: ${state.bestGlobalPosition.position()} ${state.bestGlobalPosition.error()}")
+                    println("Best global position until now: ${state.bestGlobalPosition.position()} ${state.bestGlobalPosition.error()}")
 
                     // We update the particle's position and velocity.
                     particle.updateVelocity(state.bestGlobalPosition.position())
@@ -191,7 +254,7 @@ object PSO {
         consumer.join()
 
         val state = stateActor.snapshot()
-        println("Best position: ${state.bestGlobalPosition.position()} ${state.bestGlobalPosition.error()}")
+        println("Best global position: ${state.bestGlobalPosition.position()} ${state.bestGlobalPosition.error()}")
 
         // We close the state actor in order to let the block finish.
         stateActor.close()

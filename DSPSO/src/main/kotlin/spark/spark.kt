@@ -46,12 +46,7 @@ class FitnessEvaluation(
         particle.error = fitnessFunction.evaluate(particle.position)
 
         // The personal best position is saved.
-        if (particle.bestPersonalError == null
-            || (particle.bestPersonalError!! > particle.error!!)
-        ) {
-            particle.bestPersonalPosition = particle.position.toMutableList()
-            particle.bestPersonalError = particle.error
-        }
+        particle.updateBestPersonalPosition()
 
         // The shared accumulator is updated by the executor.
         bestGlobalPositionAccumulator.add(Tuple2(particle.position, particle.error))

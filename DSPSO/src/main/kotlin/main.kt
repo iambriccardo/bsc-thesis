@@ -21,7 +21,7 @@ fun main(args: Array<String>) {
 
         newTimedExecution<Tuple2<Position<Double>?, Double?>> {
             when (algorithmType) {
-                AlgorithmType.NORMAL -> throw NotImplementedError()
+                AlgorithmType.NORMAL -> execute("NORMAL PSO") { PSO.normal(this@run) }
                 AlgorithmType.SYNC -> execute("SYNCHRONOUS PSO") { PSO.sync(this@run, sc) }
                 AlgorithmType.ASYNC -> execute("ASYNCHRONOUS PSO") { PSO.async(this@run, sc) }
             }.toFile(this@run)

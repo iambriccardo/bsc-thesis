@@ -42,6 +42,13 @@ data class Particle(
     var velocity: Velocity<Double>
 ) : Serializable
 
+fun Particle.updateBestPersonalPosition() {
+    if (bestPersonalError == null || (bestPersonalError!! > error!!)) {
+        bestPersonalPosition = position.toMutableList()
+        bestPersonalError = error
+    }
+}
+
 fun Particle.updateVelocity(bestGlobalPosition: Position<Double>?) {
     val w = 0.729
     val c1 = 1.49445
