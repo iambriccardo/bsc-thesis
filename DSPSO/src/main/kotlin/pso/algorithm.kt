@@ -263,6 +263,7 @@ object PSO {
             superRDDChannel.cancel()
         }
 
+        // We are waiting for the producer and consumer to finish their work.
         producer.join()
         consumer.join()
 
