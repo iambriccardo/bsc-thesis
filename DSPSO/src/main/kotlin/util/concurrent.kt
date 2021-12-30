@@ -8,17 +8,11 @@ import scala.Tuple2
 /* STATE ACTOR */
 
 data class State(
-    val evaluationCounter: Int,
     val bestGlobalPosition: MutablePosition.BestPosition
 )
 
-fun State.incrementCounter(): State {
-    return this.copy(evaluationCounter = this.evaluationCounter + 1)
-}
-
 fun State.mutateBestGlobalPosition(bestGlobalPosition: Tuple2<Position<Double>, Double>): State {
     return this.copy(
-        evaluationCounter = this.evaluationCounter,
         bestGlobalPosition = this.bestGlobalPosition.apply {
             this@apply.mutate(bestGlobalPosition._1, bestGlobalPosition._2)
         }
@@ -35,7 +29,7 @@ class GetState(val snapshot: StateSnapshot) : StateMessage()
 @OptIn(ObsoleteCoroutinesApi::class)
 fun CoroutineScope.stateActor() = actor<StateMessage> {
     // We initialize the shared state as empty.
-    var state = State(0, MutablePosition.BestPosition())
+    var state = State(MutablePosition.BestPosition())
 
     for (msg in channel) {
         when (msg) {

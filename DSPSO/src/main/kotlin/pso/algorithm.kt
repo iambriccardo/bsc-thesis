@@ -10,12 +10,8 @@ import PositionAccumulator
 import PositionEvaluation
 import SuperRDD
 import aggregate
-import incrementCounter
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 import mutate
 import mutateBestGlobalPosition
 import org.apache.spark.api.java.JavaFutureAction
@@ -171,7 +167,7 @@ object PSO {
         val particles = baseParticles + fillingParticles
 
         // The random particles are initialized.
-        val inputParticles = randomParticlesOfDouble(baseParticles, dimensionality)
+        val inputParticles = randomParticlesOfDouble(particles, dimensionality)
         println("Updated number of particles: $particles")
 
         // Channel containing all the superRDDs which are going to be executed against the cluster.
@@ -187,6 +183,8 @@ object PSO {
         val stateActor = stateActor()
 
         val producer = launch {
+            println("Producer: running on ${Thread.currentThread().name}")
+
             for (superRDD in superRDDChannel) {
                 println("Parallelizing superRDD of size ${superRDD.particles.size}...")
 
@@ -202,37 +200,43 @@ object PSO {
         }
 
         val consumer = launch {
+            println("Consumer: running on ${Thread.currentThread().name}")
+
             // We iterate for an equivalent number of partitions to the number of theoretical
             // particle evaluations done if this algorithm was synchronous.
+            val waitingList = mutableListOf<Deferred<Unit>>()
             repeat((particles * iterations) / superRDDSize) {
-                withContext(Dispatchers.IO) {
-                    futuresChannel.receive().get()
-                }.forEach { particle ->
-                    println("Received evaluated particle at $it")
+                // We create a coroutine for each separate super rdd we want to get and run it on a
+                // background pool of threads optimized for IO operations.
+                val job = async(Dispatchers.IO) {
+                    futuresChannel.receive().get().forEach { particle ->
+                        println("Received evaluated particle at $it on thread ${Thread.currentThread().name}")
 
-                    // We increment the number of evaluated particles.
-                    stateActor.mutate { state ->
-                        state.incrementCounter()
+                        // We update the best global position.
+                        stateActor.mutate { state ->
+                            state.mutateBestGlobalPosition(Tuple2(particle.position, particle.error))
+                        }
+
+                        // We get a snapshot of the state.
+                        val state = stateActor.snapshot()
+                        println("Best global position until now: ${state.bestGlobalPosition.position()} ${state.bestGlobalPosition.error()}")
+
+                        // We update the particle's position and velocity.
+                        particle.updateVelocity(state.bestGlobalPosition.position())
+                        particle.updatePosition()
+
+                        // We send again the particle for aggregation into a new super rdd.
+                        aggregator.aggregate(particle)
                     }
-
-                    // We update the best global position.
-                    stateActor.mutate { state ->
-                        state.mutateBestGlobalPosition(Tuple2(particle.position, particle.error))
-                    }
-
-                    // We get a snapshot of the state.
-                    val state = stateActor.snapshot()
-                    println("Best global position until now: ${state.bestGlobalPosition.position()} ${state.bestGlobalPosition.error()}")
-
-                    // We update the particle's position and velocity.
-                    particle.updateVelocity(state.bestGlobalPosition.position())
-                    particle.updatePosition()
-
-                    // We send again the particle for further evaluation.
-                    // TODO: send only if the channel contains less elements that the remaining number of iterations.
-                    aggregator.aggregate(particle)
                 }
+
+                // We add the asynchronous collection to the list of all the jobs currently
+                // waiting for the future to finish.
+                waitingList.add(job)
             }
+
+            // We wait for all the jobs to finish.
+            waitingList.awaitAll()
 
             // We stop the aggregation of particles.
             aggregator.stopAggregation()
@@ -262,6 +266,7 @@ object PSO {
         producer.join()
         consumer.join()
 
+        // We get a snapshot of the state in order to get the best global position.
         val state = stateActor.snapshot()
         println("Best global position: ${state.bestGlobalPosition.position()} ${state.bestGlobalPosition.error()}")
 
