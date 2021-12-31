@@ -204,11 +204,11 @@ object PSO {
 
             // We iterate for an equivalent number of partitions to the number of theoretical
             // particle evaluations done if this algorithm was synchronous.
-            val waitingList = mutableListOf<Deferred<Unit>>()
+            val jobs = mutableListOf<Job>()
             repeat((particles * iterations) / superRDDSize) {
                 // We create a coroutine for each separate super rdd we want to get and run it on a
                 // background pool of threads optimized for IO operations.
-                val job = async(Dispatchers.IO) {
+                val job = launch(Dispatchers.IO) {
                     futuresChannel.receive().get().forEach { particle ->
                         println("Received evaluated particle at $it on thread ${Thread.currentThread().name}")
 
@@ -232,11 +232,11 @@ object PSO {
 
                 // We add the asynchronous collection to the list of all the jobs currently
                 // waiting for the future to finish.
-                waitingList.add(job)
+                jobs.add(job)
             }
 
             // We wait for all the jobs to finish.
-            waitingList.awaitAll()
+            jobs.joinAll()
 
             // We stop the aggregation of particles.
             aggregator.stopAggregation()
