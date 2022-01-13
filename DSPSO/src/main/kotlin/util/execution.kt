@@ -1,5 +1,8 @@
 package util
 
+import PosPlacementMatrix
+import beautify
+import scala.Tuple2
 import kotlin.time.Duration
 import kotlin.time.DurationUnit
 import kotlin.time.ExperimentalTime
@@ -16,7 +19,7 @@ data class ExecutionResult<O> @OptIn(ExperimentalTime::class) constructor(
 )
 
 @OptIn(ExperimentalTime::class)
-fun <O> ExecutionResult<O>.toFile(configuration: Configuration) {
+fun ExecutionResult<Tuple2<PosPlacementMatrix?, Double?>>.toFile(configuration: Configuration) {
     val fileRepresentation = "Execution result for [$executionName]" +
             "\n" + "----" +
             "\n" + "Configuration:" +
@@ -33,7 +36,8 @@ fun <O> ExecutionResult<O>.toFile(configuration: Configuration) {
             "\n" + "- ${duration.toDouble(DurationUnit.MILLISECONDS)} milliseconds" +
             "\n" + "----" +
             "\n" + "Output:" +
-            "\n" + output.toString()
+            "\n" + output._1?.beautify() +
+            "\n" + output._2
 
     writeFile(configuration, fileRepresentation)
 }

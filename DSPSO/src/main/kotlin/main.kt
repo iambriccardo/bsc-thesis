@@ -19,7 +19,7 @@ fun main(args: Array<String>) {
 
         val sc = JavaSparkContext(spark)
 
-        newTimedExecution<Tuple2<Position<Double>?, Double?>> {
+        newTimedExecution<Tuple2<PosPlacementMatrix?, Double?>> {
             when (algorithmType) {
                 AlgorithmType.NORMAL -> execute("NORMAL PSO") { PSO.normal(this@run) }
                 AlgorithmType.SYNC -> execute("SYNCHRONOUS PSO") { PSO.sync(this@run, sc) }

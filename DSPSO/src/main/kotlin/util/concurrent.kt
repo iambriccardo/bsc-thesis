@@ -8,7 +8,7 @@ import scala.Tuple2
 /* STATE ACTOR */
 
 data class State(
-    val bestGlobalPosition: MutablePosition.BestPosition
+    val bestGlobalPosition: MutablePosition.BestPosition<Double>
 )
 
 fun State.mutateBestGlobalPosition(bestGlobalPosition: Tuple2<Position<Double>, Double>): State {

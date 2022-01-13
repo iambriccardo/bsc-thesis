@@ -4,13 +4,13 @@ import org.apache.spark.util.AccumulatorV2
 import scala.Tuple2
 
 class PositionAccumulator(
-    private val position: MutablePosition<Double>
-) : AccumulatorV2<Tuple2<Position<Double>?, Double?>, Tuple2<Position<Double>?, Double?>>() {
+    private val position: MutablePosition<IntArray, Double>
+) : AccumulatorV2<Tuple2<PosPlacementMatrix?, Double?>, Tuple2<PosPlacementMatrix?, Double?>>() {
     override fun isZero(): Boolean {
         return position.position() == null && position.error() == null
     }
 
-    override fun copy(): AccumulatorV2<Tuple2<Position<Double>?, Double?>, Tuple2<Position<Double>?, Double?>> {
+    override fun copy(): AccumulatorV2<Tuple2<PosPlacementMatrix?, Double?>, Tuple2<PosPlacementMatrix?, Double?>> {
         return PositionAccumulator(
             MutablePosition.BestPosition(position.position(), position.error())
         )
@@ -20,17 +20,17 @@ class PositionAccumulator(
         position.reset()
     }
 
-    override fun add(value: Tuple2<Position<Double>?, Double?>) {
+    override fun add(value: Tuple2<PosPlacementMatrix?, Double?>) {
         if (value._1 != null && value._2 != null)
             position.mutate(value._1!!, value._2!!)
     }
 
-    override fun merge(other: AccumulatorV2<Tuple2<Position<Double>?, Double?>, Tuple2<Position<Double>?, Double?>>) {
+    override fun merge(other: AccumulatorV2<Tuple2<PosPlacementMatrix?, Double?>, Tuple2<PosPlacementMatrix?, Double?>>) {
         // When we merge two position accumulators we just perform an addition with the current accumulator.
         add(other.value())
     }
 
-    override fun value(): Tuple2<Position<Double>?, Double?> {
+    override fun value(): Tuple2<PosPlacementMatrix?, Double?> {
         return Tuple2(position.position(), position.error())
     }
 }
@@ -38,7 +38,7 @@ class PositionAccumulator(
 data class SuperRDD(val particles: List<Particle>)
 
 class FitnessEvaluation(
-    private val fitnessFunction: FitnessFunction<Position<Double>, Double>,
+    private val fitnessFunction: FitnessFunction<PosPlacementMatrix, Double>,
     private val bestGlobalPositionAccumulator: PositionAccumulator,
     private val delay: Long = 0
 ) : Function<Particle, Particle> {
@@ -57,7 +57,7 @@ class FitnessEvaluation(
 }
 
 class AsyncFitnessEvaluation(
-    private val fitnessFunction: FitnessFunction<Position<Double>, Double>,
+    private val fitnessFunction: FitnessFunction<PosPlacementMatrix, Double>,
     private val delay: Long = 0
 ) : Function<Particle, Particle> {
     override fun call(particle: Particle): Particle {
@@ -77,7 +77,7 @@ class AsyncFitnessEvaluation(
 }
 
 class PositionEvaluation(
-    private val bestGlobalPositionBroadcast: Broadcast<Tuple2<Position<Double>?, Double?>>
+    private val bestGlobalPositionBroadcast: Broadcast<Tuple2<PosPlacementMatrix?, Double?>>
 ) : Function<Particle, Particle> {
     override fun call(particle: Particle): Particle {
         // The best global position is read from the broadcast variable copy on the executor.

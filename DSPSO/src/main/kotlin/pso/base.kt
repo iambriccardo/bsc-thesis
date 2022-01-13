@@ -1,23 +1,27 @@
 import java.io.Serializable
+import kotlin.math.exp
 import kotlin.random.Random
 
+typealias PosPlacementMatrix = Position<IntArray>
+typealias VelPlacementMatrix = Position<DoubleArray>
 typealias Position<T> = MutableList<T>
 typealias Velocity<T> = MutableList<T>
 
-interface MutablePosition<T> : Serializable {
-    fun mutate(position: Position<T>, error: T)
+interface MutablePosition<E, T> : Serializable {
+    fun mutate(position: Position<E>, error: T)
     fun reset()
 
-    fun position(): Position<T>?
+    fun position(): Position<E>?
     fun error(): T?
 
-    class BestPosition(
-        private var bestPosition: Position<Double>? = null,
+    class BestPosition<E>(
+        private var bestPosition: Position<E>? = null,
         private var bestError: Double? = null
-    ) : MutablePosition<Double> {
+    ) : MutablePosition<E, Double> {
 
-        override fun mutate(position: Position<Double>, error: Double) {
+        override fun mutate(position: Position<E>, error: Double) {
             if (bestError == null || bestError!! > error) {
+                // TODO: check if a copy is performed for the best global.
                 bestPosition = position.toMutableList()
                 bestError = error
             }
@@ -35,11 +39,11 @@ interface MutablePosition<T> : Serializable {
 }
 
 data class Particle(
-    var position: Position<Double>,
+    var position: PosPlacementMatrix,
     var error: Double?,
-    var bestPersonalPosition: Position<Double>?,
+    var bestPersonalPosition: PosPlacementMatrix?,
     var bestPersonalError: Double?,
-    var velocity: Velocity<Double>
+    var velocity: VelPlacementMatrix
 ) : Serializable
 
 fun Particle.updateBestPersonalPosition() {
@@ -49,28 +53,140 @@ fun Particle.updateBestPersonalPosition() {
     }
 }
 
-fun Particle.updateVelocity(bestGlobalPosition: Position<Double>?) {
+fun Particle.updateVelocity(bestGlobalPosition: PosPlacementMatrix?) {
+    val nFogNodes = velocity.size
+    val nModules = velocity[0].size
+    val assignedModules = IntArray(nModules)
+
+    val minVelocity = 0.0
+    val maxVelocity = 1.0
     val w = 0.729
     val c1 = 1.49445
     val c2 = 1.49445
 
-    repeat(position.size) {
-        val r1 = Random.nextDouble()
-        val r2 = Random.nextDouble()
+    // We iterate for each fog node.
+    for (i in 0 until nFogNodes) {
+        val placements = position[i]
+        val velocities = velocity[i]
+        val bestPersonalPlacements = bestPersonalPosition!![i]
+        val bestGlobalPlacements = bestGlobalPosition!![i]
 
-        val cognitiveVelocity = c1 * r1 * (bestPersonalPosition!![it] - position[it])
-        val socialVelocity = c2 * r2 * (bestGlobalPosition!![it] - position[it])
+        // We iterate for each module in a specific fog node.
+        for (j in 0 until nModules) {
+            val r1 = Random.nextDouble()
+            val r2 = Random.nextDouble()
 
-        velocity[it] = w * velocity[it] + cognitiveVelocity + socialVelocity
+            val cognitiveVelocity = c1 * r1 * (bestPersonalPlacements[j] - placements[j])
+            val socialVelocity = c2 * r2 * (bestGlobalPlacements[j] - placements[j])
+
+            if (assignedModules[j] == 0) {
+                var newVelocity = (w * velocities[j] + cognitiveVelocity + socialVelocity)
+                if (newVelocity < minVelocity) {
+                    newVelocity = minVelocity
+                } else if (newVelocity > maxVelocity) {
+                    newVelocity = maxVelocity
+                }
+
+                if (newVelocity == 1.0) {
+                    assignedModules[j] = 1
+                }
+            } else {
+                velocities[j] = 0.0
+            }
+        }
     }
 }
 
 fun Particle.updatePosition() {
-    val numberOfDimensions = position.size
+    val nFogNodes = position.size
+    val nModules = position[0].size
+    val assignedModules = IntArray(nModules)
 
-    repeat(numberOfDimensions) {
-        position[it] = position[it] + velocity[it]
+    for (i in 0 until nFogNodes) {
+        val placements = position[i]
+        val velocities = velocity[i]
+
+        for (j in 0 until nModules) {
+            if (assignedModules[j] == 0) {
+                val random = Random.nextInt(2)
+                val sigmoid = 1 / (1 + exp(-velocities[j]))
+
+                if (sigmoid > random) {
+                    placements[j] = 1
+                } else {
+                    placements[j] = 0
+                }
+
+                if (placements[j] == 1) {
+                    assignedModules[j] = 1
+                }
+            } else {
+                placements[j] = 0
+            }
+        }
     }
+
+    position.assignDanglingModules(assignedModules)
+}
+
+fun PosPlacementMatrix.copy(): PosPlacementMatrix {
+    val nFogNodes = size
+    val nModules = this[0].size
+
+    val fogNodes = mutableListOf<IntArray>()
+
+    for (i in 0 until nFogNodes) {
+        val moduleAllocations = IntArray(nModules)
+
+        for (j in 0 until nModules) {
+            moduleAllocations[j] = this[i][j]
+        }
+
+        fogNodes.add(moduleAllocations)
+    }
+
+    return fogNodes
+}
+
+fun PosPlacementMatrix.beautify(): String {
+    val nFogNodes = size
+    val nModules = this[0].size
+
+    val builder = StringBuilder()
+
+    for (i in 0 until nModules) {
+        builder.append("-")
+    }
+    builder.append("\n")
+
+    for (i in 0 until nFogNodes) {
+        for (j in 0 until nModules) {
+            builder.append("${this[i][j]} ")
+        }
+
+        builder.append("\n")
+    }
+
+    for (i in 0 until nModules) {
+        builder.append("-")
+    }
+
+    return builder.toString()
+}
+
+fun PosPlacementMatrix.assignDanglingModules(assignedModules: IntArray): PosPlacementMatrix {
+    // Loop over all the assigned modules array and randomly allocate
+    // any dangling module which has not been previously assigned.
+    for (i in assignedModules.indices) {
+        if (assignedModules[i] == 0) {
+            // We randomly select a fog node on which we are going to install the ith module.
+            val n: Int = Random.nextInt(this.size)
+            this[n][i] = 1
+            assignedModules[i] = 1
+        }
+    }
+
+    return this
 }
 
 interface FitnessFunction<I, O> : Serializable {
@@ -90,6 +206,14 @@ interface FitnessFunction<I, O> : Serializable {
             }
 
             return result
+        }
+    }
+
+    class PlacementCost : FitnessFunction<PosPlacementMatrix, Double> {
+        // TODO: implement ram and cpu params.
+        // TODO: implement real cost function.
+        override fun evaluate(input: PosPlacementMatrix): Double {
+            return Random.nextDouble(100.0)
         }
     }
 }
