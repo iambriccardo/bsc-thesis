@@ -25,7 +25,8 @@ fun ExecutionResult<Tuple2<PosPlacementMatrix?, Double?>>.toFile(configuration: 
             "\n" + "Configuration:" +
             "\n" + "- ${configuration.iterations} iterations" +
             "\n" + "- ${configuration.particles} particles" +
-            "\n" + "- ${configuration.dimensionality} dimensions" +
+            "\n" + "- ${configuration.fogNodes} fog nodes" +
+            "\n" + "- ${configuration.modules} modules" +
             "\n" + "- ${configuration.superRDDSize} particles per super rdd" +
             "\n" + "- ${configuration.fitnessEvalDelay} fitness evaluation delay in ms" +
             "\n" + "----" +

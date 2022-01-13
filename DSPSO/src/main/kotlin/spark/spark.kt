@@ -38,13 +38,20 @@ class PositionAccumulator(
 data class SuperRDD(val particles: List<Particle>)
 
 class FitnessEvaluation(
-    private val fitnessFunction: FitnessFunction<PosPlacementMatrix, Double>,
+    private val fitnessFunction: FitnessFunction<FitnessFunction.PlacementCost.PlacementInput, Double>,
+    private val runtimesMatrixBroadcast: Broadcast<MutableList<DoubleArray>>,
     private val bestGlobalPositionAccumulator: PositionAccumulator,
     private val delay: Long = 0
 ) : Function<Particle, Particle> {
     override fun call(particle: Particle): Particle {
         // The fitness function is evaluated with the current particle's position.
-        particle.error = fitnessFunction.delayedEvaluation(delay, particle.position)
+        particle.error = fitnessFunction.delayedEvaluation(
+            delay,
+            FitnessFunction.PlacementCost.PlacementInput(
+                particle.position,
+                runtimesMatrixBroadcast.value
+            )
+        )
 
         // The personal best position is saved.
         particle.updateBestPersonalPosition()
@@ -57,20 +64,22 @@ class FitnessEvaluation(
 }
 
 class AsyncFitnessEvaluation(
-    private val fitnessFunction: FitnessFunction<PosPlacementMatrix, Double>,
+    private val fitnessFunction: FitnessFunction<FitnessFunction.PlacementCost.PlacementInput, Double>,
+    private val runtimesMatrixBroadcast: Broadcast<MutableList<DoubleArray>>,
     private val delay: Long = 0
 ) : Function<Particle, Particle> {
     override fun call(particle: Particle): Particle {
         // The fitness function is evaluated with the current particle's position.
-        particle.error = fitnessFunction.delayedEvaluation(delay, particle.position)
+        particle.error = fitnessFunction.delayedEvaluation(
+            delay,
+            FitnessFunction.PlacementCost.PlacementInput(
+                particle.position,
+                runtimesMatrixBroadcast.value
+            )
+        )
 
         // The personal best position is saved.
-        if (particle.bestPersonalError == null
-            || (particle.bestPersonalError!! > particle.error!!)
-        ) {
-            particle.bestPersonalPosition = particle.position.toMutableList()
-            particle.bestPersonalError = particle.error
-        }
+        particle.updateBestPersonalPosition()
 
         return particle
     }

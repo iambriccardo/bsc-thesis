@@ -213,8 +213,6 @@ interface FitnessFunction<I, O> : Serializable {
         data class PlacementInput(
             val placementMatrix: PosPlacementMatrix,
             val runtimesMatrix: MutableList<DoubleArray>,
-            // TODO: remove if unnecessary.
-            val cpuTimesMatrix: MutableList<DoubleArray>
         )
 
         override fun evaluate(input: PlacementInput): Double {

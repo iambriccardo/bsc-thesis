@@ -32,9 +32,14 @@ class Configuration(parser: ArgParser) {
         help = "number of particles"
     )
 
-    val dimensionality by parser.storing(
-        "--dimensionality",
-        help = "dimensions of each particle"
+    val fogNodes by parser.storing(
+        "--fog-nodes",
+        help = "number of fog nodes"
+    )
+
+    val modules by parser.storing(
+        "--modules",
+        help = "number modules"
     )
 
     val superRDDSize by parser.storing(
