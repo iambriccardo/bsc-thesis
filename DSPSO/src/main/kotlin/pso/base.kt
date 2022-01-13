@@ -7,22 +7,22 @@ typealias VelPlacementMatrix = Position<DoubleArray>
 typealias Position<T> = MutableList<T>
 typealias Velocity<T> = MutableList<T>
 
-interface MutablePosition<E, T> : Serializable {
-    fun mutate(position: Position<E>, error: T)
+interface MutablePosition<P, E> : Serializable {
+    fun mutate(position: P, error: E)
     fun reset()
 
-    fun position(): Position<E>?
-    fun error(): T?
+    fun position(): P?
+    fun error(): E?
 
-    class BestPosition<E>(
-        private var bestPosition: Position<E>? = null,
+    class BestPosition(
+        private var bestPosition: PosPlacementMatrix? = null,
         private var bestError: Double? = null
-    ) : MutablePosition<E, Double> {
+    ) : MutablePosition<PosPlacementMatrix, Double> {
 
-        override fun mutate(position: Position<E>, error: Double) {
+        override fun mutate(position: PosPlacementMatrix, error: Double) {
             if (bestError == null || bestError!! > error) {
                 // TODO: check if a copy is performed for the best global.
-                bestPosition = position.toMutableList()
+                bestPosition = position.copy()
                 bestError = error
             }
         }
@@ -48,7 +48,7 @@ data class Particle(
 
 fun Particle.updateBestPersonalPosition() {
     if (bestPersonalError == null || (bestPersonalError!! > error!!)) {
-        bestPersonalPosition = position.toMutableList()
+        bestPersonalPosition = position.copy()
         bestPersonalError = error
     }
 }
@@ -133,7 +133,7 @@ fun PosPlacementMatrix.copy(): PosPlacementMatrix {
     val nFogNodes = size
     val nModules = this[0].size
 
-    val fogNodes = mutableListOf<IntArray>()
+    val placementMatrix = mutableListOf<IntArray>()
 
     for (i in 0 until nFogNodes) {
         val moduleAllocations = IntArray(nModules)
@@ -142,10 +142,10 @@ fun PosPlacementMatrix.copy(): PosPlacementMatrix {
             moduleAllocations[j] = this[i][j]
         }
 
-        fogNodes.add(moduleAllocations)
+        placementMatrix.add(moduleAllocations)
     }
 
-    return fogNodes
+    return placementMatrix
 }
 
 fun PosPlacementMatrix.beautify(): String {
@@ -209,11 +209,35 @@ interface FitnessFunction<I, O> : Serializable {
         }
     }
 
-    class PlacementCost : FitnessFunction<PosPlacementMatrix, Double> {
-        // TODO: implement ram and cpu params.
-        // TODO: implement real cost function.
-        override fun evaluate(input: PosPlacementMatrix): Double {
-            return Random.nextDouble(100.0)
+    class PlacementCost : FitnessFunction<PlacementCost.PlacementInput, Double> {
+        data class PlacementInput(
+            val placementMatrix: PosPlacementMatrix,
+            val runtimesMatrix: MutableList<DoubleArray>,
+            // TODO: remove if unnecessary.
+            val cpuTimesMatrix: MutableList<DoubleArray>
+        )
+
+        override fun evaluate(input: PlacementInput): Double {
+            val placementMatrix = input.placementMatrix
+            val runtimesMatrix = input.runtimesMatrix
+
+            val nFogNodes = placementMatrix.size
+            val nModules = placementMatrix[0].size
+
+            val sum = DoubleArray(nModules)
+
+            for (i in 0 until nFogNodes) {
+                val placements = placementMatrix[i]
+                val runtimes = runtimesMatrix[i]
+
+                for (j in 0 until nModules) {
+                    if (placements[j] == 1) {
+                        sum[i] += runtimes[j]
+                    }
+                }
+            }
+
+            return sum.maxOrNull() ?: 0.0
         }
     }
 }

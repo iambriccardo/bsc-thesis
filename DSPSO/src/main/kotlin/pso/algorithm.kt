@@ -7,7 +7,9 @@ import PosPlacementMatrix
 import beautify
 import kotlinx.coroutines.runBlocking
 import org.apache.spark.api.java.JavaSparkContext
+import randomCPUTime
 import randomPlacement
+import randomRuntime
 import scala.Tuple2
 import updateBestPersonalPosition
 import updatePosition
@@ -23,11 +25,15 @@ object PSO {
         // Base algorithm parameters.
         val iterations = config.iterations.toInt()
         val particles = config.particles.toInt()
-        val nFogNodes = 2
-        val nModules = 2
+        val nFogNodes = 10
+        val nModules = 10
 
         // Best global position.
-        val bestGlobalPosition = MutablePosition.BestPosition<IntArray>()
+        val bestGlobalPosition = MutablePosition.BestPosition()
+
+        // Initialize the random parameters used by the fitness function.
+        val runtimesMatrix = randomRuntime(nFogNodes, nModules)
+        val cpuTimesMatrix = randomCPUTime(nFogNodes, nModules)
 
         var inputParticles: List<Particle> = randomPlacement(particles, nFogNodes, nModules)
         repeat(iterations) {
@@ -39,7 +45,11 @@ object PSO {
                     particle.apply {
                         particle.error = FitnessFunction.PlacementCost().delayedEvaluation(
                             config.fitnessEvalDelay.toLong(),
-                            particle.position
+                            FitnessFunction.PlacementCost.PlacementInput(
+                                particle.position,
+                                runtimesMatrix,
+                                cpuTimesMatrix
+                            )
                         )
                         particle.updateBestPersonalPosition()
                         bestGlobalPosition.mutate(particle.position, particle.error!!)

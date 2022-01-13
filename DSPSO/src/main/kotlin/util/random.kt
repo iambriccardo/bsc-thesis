@@ -68,40 +68,36 @@ fun randomVelPlacementMatrix(nFogNodes: Int, nModules: Int): VelPlacementMatrix 
     return placementMatrix
 }
 
-//fun randomParticlesOfDouble(numberOfParticles: Int, dimensionality: Int): List<Particle> {
-//    val particles = mutableListOf<Particle>()
-//
-//    repeat(numberOfParticles) {
-//        val particle = Particle(
-//            randomPositionOfDouble(dimensionality),
-//            null,
-//            null,
-//            null,
-//            randomVelocityOfDouble(dimensionality)
-//        )
-//
-//        particles.add(particle)
-//    }
-//
-//    return particles
-//}
-//
-//fun randomPositionOfDouble(dimensionality: Int): Position<Double> {
-//    val position = mutableListOf<Double>()
-//
-//    repeat(dimensionality) {
-//        position.add(5.0)
-//    }
-//
-//    return position
-//}
-//
-//fun randomVelocityOfDouble(dimensionality: Int): Velocity<Double> {
-//    val velocity = mutableListOf<Double>()
-//
-//    repeat(dimensionality) {
-//        velocity.add(1.0)
-//    }
-//
-//    return velocity
-//}
+fun randomRuntime(nFogNodes: Int, nModules: Int): MutableList<DoubleArray> {
+    val runtimesMatrix = mutableListOf<DoubleArray>()
+    val assignedModules = IntArray(nModules)
+
+    for (i in 0 until nFogNodes) {
+        val runtimes = DoubleArray(nModules)
+
+        for (j in 0 until nModules) {
+            runtimes[j] = Random.nextDouble(1.0, 4000.0)
+        }
+
+        runtimesMatrix.add(runtimes)
+    }
+
+    return runtimesMatrix
+}
+
+fun randomCPUTime(nFogNodes: Int, nModules: Int): MutableList<DoubleArray> {
+    val runtimesMatrix = mutableListOf<DoubleArray>()
+    val assignedModules = IntArray(nModules)
+
+    for (i in 0 until nFogNodes) {
+        val runtimes = DoubleArray(nModules)
+
+        for (j in 0 until nModules) {
+            runtimes[j] = Random.nextDouble(1.0, 1000000.0)
+        }
+
+        runtimesMatrix.add(runtimes)
+    }
+
+    return runtimesMatrix
+}

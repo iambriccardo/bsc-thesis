@@ -8,10 +8,10 @@ import scala.Tuple2
 /* STATE ACTOR */
 
 data class State(
-    val bestGlobalPosition: MutablePosition.BestPosition<Double>
+    val bestGlobalPosition: MutablePosition.BestPosition
 )
 
-fun State.mutateBestGlobalPosition(bestGlobalPosition: Tuple2<Position<Double>, Double>): State {
+fun State.mutateBestGlobalPosition(bestGlobalPosition: Tuple2<PosPlacementMatrix, Double>): State {
     return this.copy(
         bestGlobalPosition = this.bestGlobalPosition.apply {
             this@apply.mutate(bestGlobalPosition._1, bestGlobalPosition._2)

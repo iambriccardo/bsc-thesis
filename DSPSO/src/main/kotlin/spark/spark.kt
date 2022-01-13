@@ -4,7 +4,7 @@ import org.apache.spark.util.AccumulatorV2
 import scala.Tuple2
 
 class PositionAccumulator(
-    private val position: MutablePosition<IntArray, Double>
+    private val position: MutablePosition<PosPlacementMatrix, Double>
 ) : AccumulatorV2<Tuple2<PosPlacementMatrix?, Double?>, Tuple2<PosPlacementMatrix?, Double?>>() {
     override fun isZero(): Boolean {
         return position.position() == null && position.error() == null
