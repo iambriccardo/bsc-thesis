@@ -1,9 +1,11 @@
-echo "Choose variant of the algorithm [sync|async]:"
+echo "Choose variant of the algorithm [normal|sync|async]:"
 read VARIANT
 
 # Launch application.
-if [[ "$VARIANT" == "sync" ]]; then
-  # Delete old application if exists.
+if [[ "$VARIANT" == "normal" ]]; then
+  kubectl delete -n spark-jobs sparkapplications.sparkoperator.k8s.io normal-pso
+  kubectl apply -f kubernetes/normal-pso.yaml --namespace=spark-jobs
+elif [[ "$VARIANT" == "sync" ]]; then
   kubectl delete -n spark-jobs sparkapplications.sparkoperator.k8s.io sync-dpso
   kubectl apply -f kubernetes/sync-dpso.yaml --namespace=spark-jobs
 elif [[ "$VARIANT" == "async" ]]; then

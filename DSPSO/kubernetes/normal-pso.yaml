@@ -6,17 +6,17 @@ metadata:
 spec:
   type: Scala
   mode: cluster
-  image: "riccardobusetti/spark:v1.0"
+  image: "riccardobusetti/spark:latest"
   imagePullPolicy: IfNotPresent
   mainClass: MainKt
   mainApplicationFile: "local:///opt/spark/jars/dpso.jar"
   arguments:
     - "--normal"
-    - "--fitness-eval-delay=0"
-    - "--iterations=100"
+    - "--fitness-eval-delay=100"
+    - "--iterations=10"
     - "--particles=100"
-    - "--dimensionality=2"
-    - "--super-rdd-size=10"
+    - "--fog-nodes=100"
+    - "--modules=100"
     - "--result-path=/spark-volume/normal-best-position.txt"
     - "--keep-alive"
   sparkVersion: "3.1.1"
