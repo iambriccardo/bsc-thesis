@@ -93,7 +93,7 @@ object PSO {
         val nIterations = config.iterations.toInt()
         val nParticles = config.particles.toInt()
         val nFogNodes = config.fogNodes.toInt()
-        val nModules = config.fogNodes.toInt()
+        val nModules = config.modules.toInt()
 
         // Spark accumulator for accumulating the best global position for each partition.
         val bestGlobalPositionAccumulator = PositionAccumulator(MutablePosition.BestPosition())
@@ -170,7 +170,7 @@ object PSO {
         val nIterations = config.iterations.toInt()
         val nBaseParticles = config.particles.toInt()
         val nFogNodes = config.fogNodes.toInt()
-        val nModules = config.fogNodes.toInt()
+        val nModules = config.modules.toInt()
         val superRDDSize = config.superRDDSize.toInt()
         if (superRDDSize < 1 || superRDDSize > nBaseParticles)
             throw RuntimeException("The superRDD size must be > 0 or <= than the number of particles.")

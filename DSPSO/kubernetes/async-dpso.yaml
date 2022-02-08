@@ -17,7 +17,7 @@ spec:
     - "--particles=100"
     - "--fog-nodes=100"
     - "--modules=100"
-    - "--super-rdd-size=1"
+    - "--super-rdd-size=10"
     - "--result-path=/spark-volume/async-best-position.txt"
     - "--keep-alive"
   sparkVersion: "3.1.1"
