@@ -137,9 +137,14 @@ object PSO {
 
                 // We evaluate each particle's position on the cluster by reading the best
                 // global position from the broadcast variable.
-                sc.parallelize(inputParticles)
+                val particles = sc.parallelize(inputParticles)
                     .map(PositionEvaluation(bestGlobalPositionBroadcast))
                     .collect()
+
+                // We clear the broadcast variable from the executors.
+                bestGlobalPositionBroadcast.unpersist()
+
+                particles
             } else {
                 // We evaluate each particle's position locally.
                 inputParticles.map { particle ->
