@@ -11,6 +11,7 @@ class PositionAccumulator(
     }
 
     override fun copy(): AccumulatorV2<Tuple2<PosPlacementMatrix?, Double?>, Tuple2<PosPlacementMatrix?, Double?>> {
+        // TODO: maybe .copy() is needed for the position.
         return PositionAccumulator(
             MutablePosition.BestPosition(position.position(), position.error())
         )

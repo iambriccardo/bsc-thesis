@@ -11,10 +11,10 @@ data class State(
     val bestGlobalPosition: MutablePosition.BestPosition
 )
 
-fun State.mutateBestGlobalPosition(bestGlobalPosition: Tuple2<PosPlacementMatrix, Double>): State {
+fun State.mutateBestGlobalPosition(position: Tuple2<PosPlacementMatrix, Double>): State {
     return this.copy(
         bestGlobalPosition = this.bestGlobalPosition.apply {
-            this@apply.mutate(bestGlobalPosition._1, bestGlobalPosition._2)
+            this@apply.mutate(position._1, position._2)
         }
     )
 }
