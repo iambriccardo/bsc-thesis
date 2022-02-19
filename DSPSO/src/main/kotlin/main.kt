@@ -19,12 +19,12 @@ fun main(args: Array<String>) {
 
         val sc = JavaSparkContext(spark)
 
-        newTimedExecution<Tuple2<PosPlacementMatrix?, Double?>> {
+        newTimedExecution<Tuple2<PosPlacementMatrix?, Double?>>(sparkContext = sc) {
             when (algorithmType) {
                 AlgorithmType.NORMAL -> execute("NORMAL PSO") { PSO.normal(this@run) }
                 AlgorithmType.SYNC -> execute("SYNCHRONOUS PSO") { PSO.sync(this@run, sc) }
                 AlgorithmType.ASYNC -> execute("ASYNCHRONOUS PSO") { PSO.async(this@run, sc) }
-            }.toFile(this@run)
+            }.toFile(sparkContext = sc, this@run)
         }
 
         if (keepAlive) {
