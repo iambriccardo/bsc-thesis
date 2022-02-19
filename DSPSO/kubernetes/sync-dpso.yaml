@@ -12,12 +12,12 @@ spec:
   mainApplicationFile: "local:///opt/spark/jars/dpso.jar"
   arguments:
     - "--sync"
-    - "--distributed-pos-eval"
-    - "--fitness-eval-delay=100"
-    - "--iterations=10"
-    - "--particles=100"
-    - "--fog-nodes=100"
-    - "--modules=100"
+    #- "--distributed-pos-eval"
+    - "--fitness-eval-delay=0"
+    - "--iterations=100"
+    - "--particles=10"
+    - "--fog-nodes=10"
+    - "--modules=10"
     - "--result-path=/spark-volume/sync-best-position.txt"
     - "--keep-alive"
   sparkVersion: "3.1.1"
@@ -29,8 +29,8 @@ spec:
         claimName: local-pvc
   driver:
     cores: 1
-    coreLimit: "1200m"
-    memory: "512m"
+    #coreLimit: "1200m"
+    #memory: "512m"
     securityContext:
       allowPrivilegeEscalation: false
       runAsUser: 0
@@ -41,8 +41,8 @@ spec:
       version: 3.1.1
     serviceAccount: spark
   executor:
-    cores: 1
-    instances: 2
-    memory: "512m"
+    cores: 2
+    instances: 3
+    #memory: "512m"
     labels:
       version: 3.1.1
